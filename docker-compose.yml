@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: etpromo
+      POSTGRES_PASSWORD: etpromo
+      POSTGRES_DB: etpromo
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U etpromo"]
+      interval: 5s
+      retries: 10
+
+  solver:
+    build: ./services/solver
+    ports:
+      - "8000:8000"
+    environment:
+      SOLVER_LOG_SEARCH: "0"
+
+volumes:
+  pgdata:

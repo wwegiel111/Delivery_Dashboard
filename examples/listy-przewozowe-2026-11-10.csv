@@ -1,0 +1,12 @@
+Numer listu;Przewoźnik;E-mail przewoźnika;Nr rejestracyjny;Dostawca;Data dostawy;Awizacja od;Awizacja do;Liczba palet;Priorytet;Uwagi
+CMR/2026/11/0501;Raben Logistics;awizacje@raben.example;WX 4471K;Komponenty Sp. z o.o.;10.11.2026;06:00;09:00;33;5;
+CMR/2026/11/0502;DSV Road;dispatch@dsv.example;PO 2290A;Kartonex;10.11.2026;;;20;5;pozycja 1/2
+CMR/2026/11/0502;DSV Road;dispatch@dsv.example;PO 2290A;Kartonex;10.11.2026;;;13;5;pozycja 2/2
+CMR/2026/11/0503;Dachser;planowanie@dachser.example;WE 88120;Etykiety PL;10.11.2026;08:00;12:00;30;5;
+CMR/2026/11/0504;Trans-Pol Sp. z o.o.;biuro@transpol.example;EL 5K331;Blister-Pak;10.11.2026;;;33;5;
+CMR/2026/11/0505;Raben Logistics;awizacje@raben.example;WX 9012M;Komponenty Sp. z o.o.;10.11.2026;10:00;14:00;34;8;pilne
+CMR/2026/11/0506;DSV Road;dispatch@dsv.example;PO 7781K;Kartonex;10.11.2026;;;18;5;niepełne auto
+CMR/2026/11/0507;Dachser;planowanie@dachser.example;WE 11202;Etykiety PL;10.11.2026;12:00;16:00;33;5;
+CMR/2026/11/0508;Trans-Pol Sp. z o.o.;;EL 7Z014;Blister-Pak;10.11.2026;;;25;5;brak e-maila
+CMR/2026/11/0509;Raben Logistics;awizacje@raben.example;WX 3310P;Komponenty Sp. z o.o.;10.11.2026;14:00;20:00;33;5;
+CMR/2026/11/0510;DSV Road;dispatch@dsv.example;PO 1188C;Kartonex;10.11.2026;;;33;5;

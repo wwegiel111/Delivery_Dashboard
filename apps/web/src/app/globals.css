@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* shadcn/ui (zinc) */
+@layer base {
+  :root {
+    --background: 60 9% 98%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --radius: 0.5rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --background: 0 0% 5%;
+      --foreground: 0 0% 98%;
+      --card: 60 2% 10%;
+      --card-foreground: 0 0% 98%;
+      --popover: 60 2% 10%;
+      --popover-foreground: 0 0% 98%;
+      --primary: 0 0% 98%;
+      --primary-foreground: 240 5.9% 10%;
+      --secondary: 240 3.7% 15.9%;
+      --secondary-foreground: 0 0% 98%;
+      --muted: 240 3.7% 15.9%;
+      --muted-foreground: 240 5% 64.9%;
+      --accent: 240 3.7% 15.9%;
+      --accent-foreground: 0 0% 98%;
+      --destructive: 0 62.8% 50%;
+      --destructive-foreground: 0 0% 98%;
+      --border: 240 3.7% 18%;
+      --input: 240 3.7% 18%;
+      --ring: 240 4.9% 83.9%;
+    }
+  }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground antialiased; }
+}
+
+/* Tokeny wizualizacji (dataviz: paleta referencyjna; jedna seria — slot 1, osobno dla jasnego i ciemnego trybu). */
+.viz-root {
+  color-scheme: light;
+  --surface-1: #fcfcfb;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid: #e1e0d9;
+  --baseline: #c3c2b7;
+  --closed: rgba(137, 135, 129, 0.12);
+  --flow-inbound: #2a78d6;   /* rozładunek */
+  --critical: #d03b3b;
+  --ring-surface: #fcfcfb;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz-root {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid: #2c2c2a;
+    --baseline: #383835;
+    --closed: rgba(137, 135, 129, 0.14);
+    --flow-inbound: #3987e5;
+    --ring-surface: #1a1a19;
+  }
+}
+:root[data-theme="dark"] .viz-root {
+  color-scheme: dark;
+  --surface-1: #1a1a19;
+  --text-primary: #f0efec;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --grid: #2c2c2a;
+  --baseline: #383835;
+  --closed: rgba(137, 135, 129, 0.14);
+  --flow-inbound: #3987e5;
+  --ring-surface: #1a1a19;
+}
+
+/* Tryb wysokiego kontrastu: bloki osi czasu dostają obramowanie systemowe. */
+@media (forced-colors: active) {
+  .viz-block { forced-color-adjust: none; border: 1px solid CanvasText; }
+}

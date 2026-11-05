@@ -1,0 +1,154 @@
+// ETPromo — planowanie przyjęć dostaw.
+// Zakres: przyjazd auta → podstawienie na stanowisko → rozładunek przez grupę na bufor
+// → wózkowi odnoszą palety na regał. Dalsze procesy magazynu są poza zakresem.
+// Konwencja: modele PascalCase w TS, tabele i kolumny snake_case w PostgreSQL.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Stanowisko rozładunkowe (domyślnie 4).
+model Dock {
+  id          Int                  @id @default(autoincrement())
+  number      Int                  @unique // 1..n — numer w raporcie dla przewoźnika
+  name        String
+  isActive    Boolean              @default(true) @map("is_active")
+  assignments ScheduleAssignment[]
+
+  @@map("dock")
+}
+
+/// Parametry planowania (wersjonowane; aktywny jest jeden wiersz).
+model SchedulingParams {
+  id       Int     @id @default(autoincrement())
+  version  Int     @unique
+  isActive Boolean @default(false) @map("is_active")
+  timezone String  @default("Europe/Warsaw")
+
+  slotMinutes          Int @default(5) @map("slot_minutes")
+  /// Liczba grup rozładunkowych (2 zespoły po 2 osoby).
+  crews                Int @default(2)
+  crewSize             Int @default(2) @map("crew_size")
+  /// Rozładunek pełnego auta przez jedną grupę; krótsze dla mniejszej liczby palet.
+  fullTruckMinutes     Int @default(60) @map("full_truck_minutes")
+  fullTruckPallets     Int @default(35) @map("full_truck_pallets")
+  /// Podstawienie auta na stanowisko i przygotowanie (stanowisko zajęte, grupa wolna).
+  dockSetupMinutes     Int @default(20) @map("dock_setup_minutes")
+  /// Łączna pojemność bufora dostaw w paletach (4 pola × ładunek jednego auta 35 palet).
+  bufferCapacity       Int @default(140) @map("buffer_capacity")
+  /// Wydajność wózkowych odnoszących palety z bufora na regał (łącznie, palet na godzinę).
+  putawayPalletsPerHour Int @default(90) @map("putaway_pallets_per_hour")
+  workFrom             String @default("06:00") @map("work_from")
+  workTo               String @default("22:00") @map("work_to")
+  /// Zmiana zmian: godzina i przestój (brak podstawień, rozładunków i odnoszenia).
+  shiftChange          String @default("14:00") @map("shift_change")
+  shiftChangeMinutes   Int    @default(20) @map("shift_change_minutes")
+  /// Przerwy każdej grupy w każdej zmianie — godziny wybiera solver.
+  breaksPerShift       Int    @default(2) @map("breaks_per_shift")
+  breakMinutes         Int    @default(15) @map("break_minutes")
+  /// Najpóźniejszy przyjazd auta; wszystko na regale przed końcem pracy (workTo).
+  lastArrival          String @default("20:00") @map("last_arrival")
+
+  weightTardiness Int @default(1000) @map("weight_tardiness")
+  weightMakespan  Int @default(50) @map("weight_makespan")
+  weightFlow      Int @default(5) @map("weight_flow")
+  weightBuffer    Int @default(10) @map("weight_buffer")
+  solverTimeLimitS Int @default(20) @map("solver_time_limit_s")
+
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  runs      ScheduleRun[]
+
+  @@map("scheduling_params")
+}
+
+enum DeliveryStatus {
+  PLANNED // do zaplanowania
+  CANCELLED
+}
+
+/// Dostawa = list przewozowy jednego auta (z importu CSV lub ręcznie).
+model Delivery {
+  id             Int                  @id @default(autoincrement())
+  /// Numer listu przewozowego (CMR / WZ dostawcy).
+  waybillNumber  String               @unique @map("waybill_number")
+  supplier       String?
+  carrier        String
+  carrierEmail   String?              @map("carrier_email")
+  truckPlate     String?              @map("truck_plate")
+  deliveryDate   DateTime             @map("delivery_date") @db.Date
+  /// Okno awizacji: najwcześniejszy przyjazd / najpóźniejsze zakończenie rozładunku.
+  windowFrom     DateTime?            @map("window_from") @db.Timestamptz(3)
+  windowTo       DateTime?            @map("window_to") @db.Timestamptz(3)
+  hardWindow     Boolean              @default(false) @map("hard_window")
+  pallets        Int
+  priority       Int                  @default(5)
+  notes          String?
+  status         DeliveryStatus       @default(PLANNED)
+  importedFrom   String?              @map("imported_from")
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  assignments    ScheduleAssignment[]
+
+  @@index([deliveryDate, status])
+  @@map("delivery")
+}
+
+enum RunStatus {
+  SOLVING
+  OPTIMAL
+  FEASIBLE
+  INFEASIBLE
+  ERROR
+}
+
+/// Jeden przebieg planowania dnia (historia — każde „Ułóż plan” to nowy przebieg).
+model ScheduleRun {
+  id              Int                  @id @default(autoincrement())
+  planDate        DateTime             @map("plan_date") @db.Date
+  horizonStart    DateTime             @map("horizon_start") @db.Timestamptz(3)
+  status          RunStatus            @default(SOLVING)
+  paramsId        Int                  @map("params_id")
+  params          SchedulingParams     @relation(fields: [paramsId], references: [id])
+  relaxed         Boolean              @default(false)
+  objectiveValue  Float?               @map("objective_value")
+  wallTimeMs      Int?                 @map("wall_time_ms")
+  kpis            Json?
+  hints           Json?
+  errorMessage    String?              @map("error_message")
+  /// Pełne żądanie i odpowiedź solvera (profil bufora, dopływ, odnoszenie per slot).
+  requestPayload  Json                 @map("request_payload")
+  responsePayload Json?                @map("response_payload")
+  assignments     ScheduleAssignment[]
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([planDate, createdAt])
+  @@map("schedule_run")
+}
+
+/// Przydział auta: godzina przyjazdu, stanowisko i grupa rozładunkowa.
+model ScheduleAssignment {
+  id            Int         @id @default(autoincrement())
+  runId         Int         @map("run_id")
+  run           ScheduleRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  deliveryId    Int         @map("delivery_id")
+  delivery      Delivery    @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  dockId        Int         @map("dock_id")
+  dock          Dock        @relation(fields: [dockId], references: [id])
+  crew          Int
+  arrivalAt     DateTime    @map("arrival_at") @db.Timestamptz(3)
+  unloadStartAt DateTime    @map("unload_start_at") @db.Timestamptz(3)
+  unloadEndAt   DateTime    @map("unload_end_at") @db.Timestamptz(3)
+  arrivalSlot   Int         @map("arrival_slot")
+  startSlot     Int         @map("start_slot")
+  endSlot       Int         @map("end_slot")
+  lateBySlots   Int         @default(0) @map("late_by_slots")
+
+  @@unique([runId, deliveryId])
+  @@index([runId, arrivalSlot])
+  @@map("schedule_assignment")
+}

@@ -1,0 +1,25 @@
+{
+  "name": "etpromo-dock-scheduling",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ETPromo — harmonogramowanie dostaw, wysyłek i przepływu magazynowego",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w apps/web",
+    "build": "npm run build -w packages/contracts && npm run build -w apps/web",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:generate": "npm run generate -w packages/db",
+    "db:migrate": "npm run migrate -w packages/db",
+    "db:seed": "npm run seed -w packages/db",
+    "contracts:export": "npm run export-schema -w packages/contracts",
+    "solver:dev": "cd services/solver && uv run uvicorn app.main:app --reload --port 8000",
+    "solver:test": "cd services/solver && uv run pytest -q"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
