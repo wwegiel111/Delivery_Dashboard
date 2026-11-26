@@ -4,7 +4,7 @@
  */
 import { prisma } from "@etpromo/db";
 import { afterAll, describe, expect, it } from "vitest";
-import { deleteRun, getRunView, runPlan } from "./plan";
+import { deleteRun, getRunView, listRuns, runPlan } from "./plan";
 
 const DATE = "2026-11-09";
 
@@ -62,5 +62,25 @@ describe(`plan przyjęć ${DATE} (seed: 20 aut)`, () => {
     console.info("KPI", view.kpis);
     expect(await deleteRun(runId)).toBe(DATE);
     expect(await getRunView(runId)).toBeNull();
+  }, 60_000);
+
+  it("trwające generowanie blokuje duplikat i usuwanie; przerwane jest porażką i da się je usunąć", async () => {
+    const { runId } = await runPlan(DATE, { timeLimitS: 5 });
+    const base = await prisma.scheduleRun.findUniqueOrThrow({ where: { id: runId } });
+    const solving = await prisma.scheduleRun.create({
+      data: { planDate: base.planDate, horizonStart: base.horizonStart, status: "SOLVING", paramsId: base.paramsId, requestPayload: base.requestPayload ?? {} },
+    });
+    try {
+      await expect(runPlan(DATE, { timeLimitS: 5 })).rejects.toMatchObject({ key: "planSolving" });
+      await expect(deleteRun(solving.id)).rejects.toMatchObject({ key: "planSolving" });
+      expect((await getRunView(solving.id))!.phase).toBe("solving");
+
+      await prisma.scheduleRun.update({ where: { id: solving.id }, data: { createdAt: new Date(Date.now() - 10 * 60_000) } });
+      const item = (await listRuns(DATE)).find((r) => r.id === solving.id)!;
+      expect(item).toMatchObject({ phase: "failed", failure: "interrupted" });
+      expect(await deleteRun(solving.id)).toBe(DATE);
+    } finally {
+      await prisma.scheduleRun.deleteMany({ where: { id: { in: [solving.id, runId] } } });
+    }
   }, 60_000);
 });

@@ -19,6 +19,8 @@
 import { localDayStart, localTimeOn, zonedTimeToUtc } from "@etpromo/contracts";
 import { prisma } from "@etpromo/db";
 import { z } from "zod";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
+import { translator, type Translator } from "@/i18n/translator";
 import type { RawRow } from "../import/table";
 
 export const TEMPLATE_HEADERS = [
@@ -63,29 +65,41 @@ export function canonicalize(row: RawRow): RawRow {
 }
 
 const empty = (v: unknown) => (v === "" || v === undefined ? undefined : v);
-const Row = z.object({
-  numer_listu: z.string().trim().min(1, "brak numeru listu przewozowego"),
-  przewoznik: z.string().trim().min(1, "brak przewoźnika"),
-  email_przewoznika: z.preprocess(empty, z.email("nieprawidłowy e-mail przewoźnika").optional()),
+/** Schemat wiersza z komunikatami w języku użytkownika. */
+const rowSchema = (t: Translator) =>
+  z.object({
+  numer_listu: z.string({ error: t("validation.import.waybillMissing") }).trim().min(1, t("validation.import.waybillMissing")),
+  przewoznik: z.string({ error: t("validation.import.carrierMissing") }).trim().min(1, t("validation.import.carrierMissing")),
+  email_przewoznika: z.preprocess(empty, z.email(t("validation.import.carrierEmailInvalid")).optional()),
   nr_rejestracyjny: z.preprocess(empty, z.string().trim().optional()),
   dostawca: z.preprocess(empty, z.string().trim().optional()),
   data_dostawy: z
-    .string()
+    .string({ error: t("validation.import.dateFormat") })
     .trim()
     .transform((v, ctx) => {
       const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
       const pl = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(v);
       if (iso) return v;
       if (pl) return `${pl[3]}-${pl[2]!.padStart(2, "0")}-${pl[1]!.padStart(2, "0")}`;
-      ctx.addIssue({ code: "custom", message: "data dostawy w formacie RRRR-MM-DD lub DD.MM.RRRR" });
+      ctx.addIssue({ code: "custom", message: t("validation.import.dateFormat") });
       return z.NEVER;
     }),
   awizacja_od: z.preprocess(empty, z.string().trim().optional()),
   awizacja_do: z.preprocess(empty, z.string().trim().optional()),
-  liczba_palet: z.preprocess((v) => (typeof v === "string" ? v.replace(/\s/g, "") : v), z.coerce.number().int("liczba palet musi być całkowita").positive("liczba palet > 0")),
-  priorytet: z.preprocess((v) => empty(v) ?? 5, z.coerce.number().int().min(1).max(10)),
+  liczba_palet: z.preprocess(
+    (v) => (typeof v === "string" ? v.replace(/\s/g, "") : v),
+    z.coerce.number({ error: t("validation.import.palletsInt") }).int(t("validation.import.palletsInt")).positive(t("validation.import.palletsPositive")),
+  ),
+  priorytet: z.preprocess(
+    (v) => empty(v) ?? 5,
+    z.coerce
+      .number({ error: t("validation.import.priorityRange") })
+      .int(t("validation.import.priorityRange"))
+      .min(1, t("validation.import.priorityRange"))
+      .max(10, t("validation.import.priorityRange")),
+  ),
   uwagi: z.preprocess(empty, z.string().optional()),
-});
+  });
 
 export interface ParsedDelivery {
   waybillNumber: string;
@@ -118,7 +132,9 @@ export function parseTime(value: string, deliveryDate: string, tz: string): Date
   return null;
 }
 
-export function parseWaybills(rawRows: RawRow[], tz: string): { deliveries: ParsedDelivery[]; errors: RowError[] } {
+export function parseWaybills(rawRows: RawRow[], tz: string, locale: Locale = DEFAULT_LOCALE): { deliveries: ParsedDelivery[]; errors: RowError[] } {
+  const t = translator(locale);
+  const Row = rowSchema(t);
   const errors: RowError[] = [];
   const byNumber = new Map<string, ParsedDelivery>();
   rawRows.forEach((raw, i) => {
@@ -131,9 +147,9 @@ export function parseWaybills(rawRows: RawRow[], tz: string): { deliveries: Pars
     const r = res.data;
     const from = r.awizacja_od ? parseTime(r.awizacja_od, r.data_dostawy, tz) : null;
     const to = r.awizacja_do ? parseTime(r.awizacja_do, r.data_dostawy, tz) : null;
-    if (r.awizacja_od && !from) errors.push({ row: rowNo, message: `awizacja od: "${r.awizacja_od}" — oczekiwano HH:MM` });
-    if (r.awizacja_do && !to) errors.push({ row: rowNo, message: `awizacja do: "${r.awizacja_do}" — oczekiwano HH:MM` });
-    if (from && to && to <= from) errors.push({ row: rowNo, message: "koniec okna awizacji przed jego początkiem" });
+    if (r.awizacja_od && !from) errors.push({ row: rowNo, message: t("validation.import.windowFromFormat", { value: r.awizacja_od }) });
+    if (r.awizacja_do && !to) errors.push({ row: rowNo, message: t("validation.import.windowToFormat", { value: r.awizacja_do }) });
+    if (from && to && to <= from) errors.push({ row: rowNo, message: t("validation.import.windowOrder") });
 
     const prev = byNumber.get(r.numer_listu);
     if (!prev) {
@@ -155,7 +171,7 @@ export function parseWaybills(rawRows: RawRow[], tz: string): { deliveries: Pars
     }
     // Kolejna pozycja tego samego listu: sumujemy palety, nagłówek musi się zgadzać.
     if (prev.carrier !== r.przewoznik || prev.deliveryDate !== r.data_dostawy)
-      errors.push({ row: rowNo, message: `list ${r.numer_listu}: inny przewoźnik lub data niż w wierszu ${prev.rows[0]}` });
+      errors.push({ row: rowNo, message: t("validation.import.inconsistent", { waybill: r.numer_listu, row: prev.rows[0]! }) });
     prev.pallets += r.liczba_palet;
     prev.rows.push(rowNo);
   });
@@ -172,16 +188,18 @@ export interface ImportSummary {
 /** Walidacja + opcjonalny zapis (całość albo nic). */
 export async function importWaybills(
   rawRows: RawRow[],
-  opts: { tz: string; commit: boolean; bufferCapacity: number; fileName: string },
+  opts: { tz: string; commit: boolean; bufferCapacity: number; fileName: string; locale?: Locale },
 ): Promise<ImportSummary> {
-  const { deliveries, errors } = parseWaybills(rawRows, opts.tz);
+  const locale = opts.locale ?? DEFAULT_LOCALE;
+  const t = translator(locale);
+  const { deliveries, errors } = parseWaybills(rawRows, opts.tz, locale);
   const warnings: string[] = [];
   for (const d of deliveries)
     if (d.pallets > opts.bufferCapacity)
-      errors.push({ row: d.rows[0]!, message: `list ${d.waybillNumber}: ${d.pallets} palet przekracza pojemność bufora (${opts.bufferCapacity})` });
+      errors.push({ row: d.rows[0]!, message: t("validation.import.overBuffer", { waybill: d.waybillNumber, pallets: d.pallets, capacity: opts.bufferCapacity }) });
   const summary = deliveries.map((d) => ({ waybillNumber: d.waybillNumber, carrier: d.carrier, deliveryDate: d.deliveryDate, pallets: d.pallets }));
   const missingEmail = deliveries.filter((d) => !d.carrierEmail).length;
-  if (missingEmail > 0) warnings.push(`${missingEmail} list(ów) bez e-maila przewoźnika — wiadomość trzeba będzie wysłać ręcznie`);
+  if (missingEmail > 0) warnings.push(t("notifications.importNoEmail", { waybills: t("common.waybills", { count: missingEmail }) }));
   if (!opts.commit || errors.length > 0) return { deliveries: summary, errors, warnings, committed: false };
 
   // Niezmienione listy pomijamy — ponowny import tego samego pliku nie unieważnia gotowego planu.
@@ -206,7 +224,8 @@ export async function importWaybills(
       e.notes !== d.notes
     );
   });
-  if (changed.length < deliveries.length) warnings.push(`${deliveries.length - changed.length} list(ów) bez zmian względem bazy — pominięto`);
+  if (changed.length < deliveries.length)
+    warnings.push(t("notifications.importUnchanged", { waybills: t("common.waybills", { count: deliveries.length - changed.length }) }));
 
   await prisma.$transaction(
     changed.map((d) => {

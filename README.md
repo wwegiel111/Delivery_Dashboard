@@ -75,11 +75,22 @@ npm run dev                                 # http://localhost:3000
 
 Opcjonalnie w `apps/web/.env.local`: `WAREHOUSE_NAME`, `REPORT_SIGNATURE` (podpis w mailach i PDF).
 
+## Język, pomoc i samouczek
+
+- **PL / EN:** przełącznik w nagłówku (domyślnie polski, zapamiętany w cookie; adres i wpisane dane zostają). PDF i maile do
+  przewoźników mogą mieć własny język — pole „Język PDF i wiadomości” na ekranie planu (`/api/schedule/{id}/report?lang=en`).
+- **Pomoc kontekstowa:** ikony ⓘ przy nieoczywistych polach, parametrach, kafelkach i kolumnach — krótkie opisy
+  (maks. dwa zdania), dostępne myszą, klawiaturą i dotykiem.
+- **Samouczek:** okno powitalne przy pierwszym wejściu i krótki przewodnik (17 kroków, ok. 2 minuty) po głównym przepływie
+  pracy. Przycisk „Pomoc” wznawia lub uruchamia go ponownie i prowadzi do krótkiej instrukcji `/help`.
+
+Szczegóły techniczne (dodawanie tłumaczeń, opisów i kroków, zapamiętywanie stanu): [`docs/i18n-help-onboarding.md`](docs/i18n-help-onboarding.md).
+
 ## Testy
 
 ```bash
 npm run solver:test                 # model: grupy, stanowiska, bufor, godziny, awizacje, wąskie gardło, kontrakt
-npm test                            # TS: czas/DST, import list, budowa żądania, maile, PDF
+npm test                            # TS: czas/DST, import list, budowa żądania, maile, PDF, słowniki PL/EN, samouczek
 npm run test:e2e -w apps/web        # baza + solver: plan dnia z seeda, niezależna weryfikacja
 npm run contracts:export            # po zmianie kontraktu (test Pythona wykryje rozjazd)
 ```

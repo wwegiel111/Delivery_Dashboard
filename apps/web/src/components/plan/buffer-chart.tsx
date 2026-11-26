@@ -1,6 +1,7 @@
 "use client";
 
 import { slotToDate } from "@etpromo/contracts/time";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fmtTime } from "@/lib/time-format";
 
@@ -21,6 +22,8 @@ const M = { top: 14, right: 16, bottom: 24, left: 34 };
 
 /** Zapełnienie bufora w ciągu dnia (jedna seria) z linią pojemności. */
 export function BufferChart({ inflow, putaway, level, capacity, putawayPerSlot, horizonStart, slotMinutes, closedSlots, tz }: Props) {
+  const t = useTranslations("charts.buffer");
+  const locale = useLocale();
   const box = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(900);
   const [hover, setHover] = useState<number | null>(null);
@@ -63,17 +66,17 @@ export function BufferChart({ inflow, putaway, level, capacity, putawayPerSlot, 
   }
 
   return (
-    <figure className="viz-root rounded-lg border p-4" style={{ background: "var(--surface-1)" }}>
+    <figure className="viz-root rounded-lg border p-4" style={{ background: "var(--surface-1)" }} data-tour="buffer-chart">
       <figcaption className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
         <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-          Zapełnienie bufora (palety)
+          {t("title")}
         </span>
         <span className="text-xs tabular-nums" style={{ color: "var(--text-secondary)" }}>
-          szczyt {Math.max(0, ...peak)} / {capacity} · wózkowi odnoszą do {putawayPerSlot} palet na {slotMinutes} min
+          {t("summary", { peak: Math.max(0, ...peak), capacity, perSlot: putawayPerSlot, slot: slotMinutes })}
         </span>
       </figcaption>
       <div ref={box} className="relative">
-        <svg width={width} height={H} role="img" aria-label={`Zapełnienie bufora w ciągu dnia, szczyt ${Math.max(0, ...peak)} z ${capacity} palet`}>
+        <svg width={width} height={H} role="img" aria-label={t("aria", { peak: Math.max(0, ...peak), capacity })}>
           {closedSlots
             .filter(([a, b]) => b > from && a < to)
             .map(([a, b]) => (
@@ -89,14 +92,14 @@ export function BufferChart({ inflow, putaway, level, capacity, putawayPerSlot, 
           ))}
           {hours.map((s) => (
             <text key={s} x={x(s)} y={H - 6} fontSize={10} textAnchor="middle" fill="var(--text-muted)" className="tabular-nums">
-              {fmtTime(at(s), tz)}
+              {fmtTime(at(s), tz, locale)}
             </text>
           ))}
           <path d={area} fill="var(--flow-inbound)" fillOpacity={0.12} />
           <path d={line} fill="none" stroke="var(--flow-inbound)" strokeWidth={2} strokeLinejoin="round" />
           <line x1={M.left} x2={width - M.right} y1={y(capacity)} y2={y(capacity)} stroke="var(--text-secondary)" />
           <text x={width - M.right} y={y(capacity) - 4} textAnchor="end" fontSize={10} fill="var(--text-secondary)">
-            pojemność {capacity}
+            {t("capacity", { capacity })}
           </text>
           {hover !== null && (
             <g pointerEvents="none">
@@ -113,12 +116,10 @@ export function BufferChart({ inflow, putaway, level, capacity, putawayPerSlot, 
             style={{ left: Math.min(width - 190, x(hover) + 12), top: 0 }}
           >
             <div className="font-medium">
-              {fmtTime(at(hover), tz)}–{fmtTime(at(hover + 1), tz)}
+              {fmtTime(at(hover), tz, locale)}–{fmtTime(at(hover + 1), tz, locale)}
             </div>
-            <div className="text-muted-foreground">na buforze: {peak[hover] ?? 0} palet</div>
-            <div className="text-muted-foreground">
-              wjechało {inflow[hover] ?? 0} · odniesiono {putaway[hover] ?? 0}
-            </div>
+            <div className="text-muted-foreground">{t("tooltipLevel", { count: peak[hover] ?? 0 })}</div>
+            <div className="text-muted-foreground">{t("tooltipFlow", { inflow: inflow[hover] ?? 0, putaway: putaway[hover] ?? 0 })}</div>
           </div>
         )}
       </div>

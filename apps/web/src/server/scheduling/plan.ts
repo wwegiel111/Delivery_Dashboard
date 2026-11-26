@@ -1,13 +1,18 @@
 /** Planowanie dnia przyjęć: baza → solver → zapis przydziałów; odczyt planu dla UI i raportu. */
 import { localDayStart, slotToDate, SolveRequest, SolveResponse } from "@etpromo/contracts";
 import { prisma, type RunStatus, type SchedulingParams } from "@etpromo/db";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
+import { translator } from "@/i18n/translator";
+import { LocalizedError, RunFailure, errorPayload } from "../errors";
+import { translateRunError } from "./hints";
+import { encodeRunError, runState, solvingDeadline, timeLimitOf, type FailureKind, type RunPhase } from "./run-state";
 import type { PlanRow, ReportMeta } from "../report/report";
 import { buildRequest } from "./derive";
 import { callSolver } from "./solver-client";
 
 export async function getActiveParams(): Promise<SchedulingParams> {
   const p = await prisma.schedulingParams.findFirst({ where: { isActive: true }, orderBy: { version: "desc" } });
-  if (!p) throw new Error("Brak aktywnych parametrów — uruchom `npm run db:seed`");
+  if (!p) throw new LocalizedError("noActiveParams");
   return p;
 }
 
@@ -29,9 +34,17 @@ export interface RunResult {
 
 export async function runPlan(isoDate: string, opts: { timeLimitS?: number } = {}): Promise<RunResult> {
   const [params, docks, deliveries] = await Promise.all([getActiveParams(), activeDocks(), deliveriesForDate(isoDate)]);
-  if (docks.length === 0) throw new Error("Brak aktywnych stanowisk — sprawdź Parametry");
+  if (docks.length === 0) throw new LocalizedError("noActiveDocks");
   const dayStart = localDayStart(isoDate, params.timezone);
   const request = buildRequest({ dayStart, params, docks: docks.length, deliveries, timeLimitS: opts.timeLimitS });
+
+  // Jedno generowanie naraz dla dnia: trwający (nieprzerwany) przebieg blokuje kolejny — np. z drugiej karty.
+  const running = await prisma.scheduleRun.findFirst({
+    where: { planDate: dateCol(isoDate), status: "SOLVING" },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true, requestPayload: true },
+  });
+  if (running && new Date() <= solvingDeadline(running.createdAt, timeLimitOf(running.requestPayload))) throw new LocalizedError("planSolving");
 
   const run = await prisma.scheduleRun.create({
     data: { planDate: dateCol(isoDate), horizonStart: dayStart, status: "SOLVING", paramsId: params.id, requestPayload: request as object },
@@ -75,25 +88,46 @@ export async function runPlan(isoDate: string, opts: { timeLimitS?: number } = {
     ]);
     return { runId: run.id, status, hints: res.hints };
   } catch (err) {
-    await prisma.scheduleRun.update({ where: { id: run.id }, data: { status: "ERROR", errorMessage: err instanceof Error ? err.message : String(err) } });
-    throw err;
+    // Zapis niezależny od języka (klucz + wartości) — interfejs przetłumaczy go i rozpozna rodzaj błędu.
+    const { key, values } = errorPayload(err);
+    await prisma.scheduleRun.update({ where: { id: run.id }, data: { status: "ERROR", errorMessage: encodeRunError(key, values) } });
+    throw new RunFailure(run.id, err);
   }
 }
 
-export async function listRuns(isoDate: string) {
-  return prisma.scheduleRun.findMany({
+export interface RunListItem {
+  id: number;
+  status: RunStatus;
+  createdAt: Date;
+  phase: RunPhase;
+  failure: FailureKind | null;
+}
+
+export async function listRuns(isoDate: string): Promise<RunListItem[]> {
+  const runs = await prisma.scheduleRun.findMany({
     where: { planDate: dateCol(isoDate) },
     orderBy: { createdAt: "desc" },
     take: 10,
-    select: { id: true, status: true, createdAt: true },
+    select: { id: true, status: true, createdAt: true, errorMessage: true, requestPayload: true },
   });
+  return runs.map((r) => ({
+    id: r.id,
+    status: r.status,
+    createdAt: r.createdAt,
+    ...runState({ status: r.status, errorMessage: r.errorMessage, createdAt: r.createdAt, timeLimitS: timeLimitOf(r.requestPayload) }),
+  }));
 }
 
 /** Usuwa wersję planu (przydziały kasowane kaskadowo). Zwraca datę planu. */
 export async function deleteRun(runId: number): Promise<string | null> {
-  const run = await prisma.scheduleRun.findUnique({ where: { id: runId }, select: { planDate: true, status: true } });
+  const run = await prisma.scheduleRun.findUnique({
+    where: { id: runId },
+    select: { planDate: true, status: true, errorMessage: true, createdAt: true, requestPayload: true },
+  });
   if (!run) return null;
-  if (run.status === "SOLVING") throw new Error("Plan jest właśnie układany — poczekaj na wynik");
+  // Trwające generowanie chronimy; przerwane (po terminie) można usunąć.
+  const { phase } = runState({ status: run.status, errorMessage: run.errorMessage, createdAt: run.createdAt, timeLimitS: timeLimitOf(run.requestPayload) });
+  if (phase === "solving") throw new LocalizedError("planSolving");
   await prisma.scheduleRun.delete({ where: { id: runId } });
   return run.planDate.toISOString().slice(0, 10);
 }
@@ -109,18 +143,30 @@ export interface WeekDay {
   date: string;
   trucks: number;
   pallets: number;
-  run: { id: number; status: RunStatus; lastEndSlot: number | null; putawaySlot: number | null; slotMinutes: number; horizonStart: string; stale: boolean } | null;
+  run: {
+    id: number;
+    status: RunStatus;
+    phase: RunPhase;
+    failure: FailureKind | null;
+    lastEndSlot: number | null;
+    slotMinutes: number;
+    horizonStart: string;
+    stale: boolean;
+  } | null;
 }
 
 /** Podsumowanie tygodnia: dostawy i najnowszy plan każdego dnia. */
 export async function weekOverview(isoDate: string): Promise<WeekDay[]> {
   const days = weekDays(isoDate);
   const [deliveries, runs] = await Promise.all([
-    prisma.delivery.findMany({ where: { deliveryDate: { in: days.map(dateCol) }, status: "PLANNED" }, select: { deliveryDate: true, pallets: true, id: true, updatedAt: true } }),
+    prisma.delivery.findMany({
+      where: { deliveryDate: { in: days.map(dateCol) }, status: "PLANNED" },
+      select: { deliveryDate: true, pallets: true, id: true, updatedAt: true },
+    }),
     prisma.scheduleRun.findMany({
       where: { planDate: { in: days.map(dateCol) } },
       orderBy: { createdAt: "desc" },
-      select: { id: true, planDate: true, status: true, kpis: true, createdAt: true, requestPayload: true },
+      select: { id: true, planDate: true, status: true, kpis: true, createdAt: true, requestPayload: true, errorMessage: true },
     }),
   ]);
   return days.map((date) => {
@@ -129,10 +175,18 @@ export async function weekOverview(isoDate: string): Promise<WeekDay[]> {
     let view: WeekDay["run"] = null;
     if (run) {
       const req = run.requestPayload as { slot_minutes: number; horizon_start: string; trucks: { id: string }[] };
-      const k = run.kpis as { last_unload_end_slot: number; all_putaway_slot: number } | null;
+      const k = run.kpis as { last_unload_end_slot: number } | null;
       const planned = new Set(req.trucks.map((t) => t.id));
       const stale = own.length !== planned.size || own.some((d) => !planned.has(String(d.id)) || d.updatedAt > run.createdAt);
-      view = { id: run.id, status: run.status, lastEndSlot: k?.last_unload_end_slot ?? null, putawaySlot: k?.all_putaway_slot ?? null, slotMinutes: req.slot_minutes, horizonStart: req.horizon_start, stale };
+      view = {
+        id: run.id,
+        status: run.status,
+        ...runState({ status: run.status, errorMessage: run.errorMessage, createdAt: run.createdAt, timeLimitS: timeLimitOf(run.requestPayload) }),
+        lastEndSlot: k?.last_unload_end_slot ?? null,
+        slotMinutes: req.slot_minutes,
+        horizonStart: req.horizon_start,
+        stale,
+      };
     }
     return { date, trucks: own.length, pallets: own.reduce((s, d) => s + d.pallets, 0), run: view };
   });
@@ -142,9 +196,13 @@ export interface RunView {
   id: number;
   planDate: string;
   status: RunStatus;
+  /** Etap cyklu życia: generowanie w toku, gotowy plan albo zakończenie bez planu (z rodzajem porażki). */
+  phase: RunPhase;
+  failure: FailureKind | null;
   relaxed: boolean;
   createdAt: string;
   wallTimeMs: number | null;
+  /** Szczegóły błędu w języku żądania (np. komunikat połączenia z modułem planowania). */
   errorMessage: string | null;
   horizonStart: string;
   slotMinutes: number;
@@ -179,7 +237,8 @@ export interface RunView {
   staleReasons: string[];
 }
 
-export async function getRunView(runId: number): Promise<RunView | null> {
+/** `locale` — język opisów nieaktualności planu (`staleReasons`); domyślnie polski jak dotąd. */
+export async function getRunView(runId: number, locale: Locale = DEFAULT_LOCALE): Promise<RunView | null> {
   const run = await prisma.scheduleRun.findUnique({
     where: { id: runId },
     include: { params: true, assignments: { include: { delivery: true, dock: true }, orderBy: { arrivalSlot: "asc" } } },
@@ -193,21 +252,23 @@ export async function getRunView(runId: number): Promise<RunView | null> {
   const current = await deliveriesForDate(planDate);
   const planned = new Set(req.trucks.map((t) => t.id));
   const staleReasons: string[] = [];
+  const t = translator(locale);
   const added = current.filter((d) => !planned.has(String(d.id)));
-  if (added.length) staleReasons.push(`${added.length} nowa(e) dostawa(y) po ułożeniu planu: ${added.map((d) => d.waybillNumber).join(", ")}`);
+  if (added.length) staleReasons.push(t("scheduling.stale.added", { count: added.length, list: added.map((d) => d.waybillNumber).join(", ") }));
   const changed = current.filter((d) => planned.has(String(d.id)) && d.updatedAt > run.createdAt);
-  if (changed.length) staleReasons.push(`zmienione po ułożeniu planu: ${changed.map((d) => d.waybillNumber).join(", ")}`);
+  if (changed.length) staleReasons.push(t("scheduling.stale.changed", { list: changed.map((d) => d.waybillNumber).join(", ") }));
   const removed = req.trucks.filter((t) => !current.some((d) => String(d.id) === t.id));
-  if (removed.length) staleReasons.push(`anulowane lub przeniesione: ${removed.map((t) => t.ref).join(", ")}`);
+  if (removed.length) staleReasons.push(t("scheduling.stale.removed", { list: removed.map((t) => t.ref).join(", ") }));
 
   return {
     id: run.id,
     planDate,
     status: run.status,
+    ...runState({ status: run.status, errorMessage: run.errorMessage, createdAt: run.createdAt, timeLimitS: req.time_limit_s }),
     relaxed: run.relaxed,
     createdAt: run.createdAt.toISOString(),
     wallTimeMs: run.wallTimeMs,
-    errorMessage: run.errorMessage,
+    errorMessage: translateRunError(run.errorMessage, t),
     horizonStart: req.horizon_start,
     slotMinutes: req.slot_minutes,
     horizonSlots: req.horizon_slots,
@@ -250,9 +311,9 @@ export async function getRunView(runId: number): Promise<RunView | null> {
   };
 }
 
-/** Wiersze raportu (PDF / maile) z zapisanego przebiegu. */
-export async function reportData(runId: number): Promise<{ rows: PlanRow[]; meta: ReportMeta; view: RunView } | null> {
-  const view = await getRunView(runId);
+/** Wiersze raportu (PDF / maile) z zapisanego przebiegu; `locale` — język dokumentu. */
+export async function reportData(runId: number, locale: Locale = DEFAULT_LOCALE): Promise<{ rows: PlanRow[]; meta: ReportMeta; view: RunView } | null> {
+  const view = await getRunView(runId, locale);
   if (!view) return null;
   const params = await getActiveParams();
   const start = new Date(view.horizonStart);
@@ -264,9 +325,10 @@ export async function reportData(runId: number): Promise<{ rows: PlanRow[]; meta
       planDate: view.planDate,
       timezone: params.timezone,
       warehouseName: process.env.WAREHOUSE_NAME ?? "ETPromo",
-      signature: process.env.REPORT_SIGNATURE ?? "Dział przyjęć ETPromo",
+      signature: process.env.REPORT_SIGNATURE ?? translator(locale)("reports.defaultSignature"),
       generatedAt: new Date(),
       runId,
+      locale,
     },
   };
 }

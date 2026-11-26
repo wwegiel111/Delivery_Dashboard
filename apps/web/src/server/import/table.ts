@@ -1,5 +1,6 @@
 /** CSV / XLSX -> wiersze { kolumna: tekst }. Nagłówki normalizowane do snake_case. */
 import Papa from "papaparse";
+import { LocalizedError } from "../errors";
 
 export type RawRow = Record<string, string>;
 
@@ -38,7 +39,7 @@ export function rowsFromMatrix(matrix: unknown[][]): RawRow[] {
 export function parseCsv(text: string): RawRow[] {
   // Separator wykrywany automatycznie (polski Excel eksportuje CSV ze średnikiem).
   const res = Papa.parse<string[]>(text.replace(/^﻿/, ""), { skipEmptyLines: "greedy", delimiter: "" });
-  if (res.errors.length > 0 && res.data.length === 0) throw new Error(`CSV: ${res.errors[0]!.message}`);
+  if (res.errors.length > 0 && res.data.length === 0) throw new LocalizedError("csv", { message: res.errors[0]!.message });
   return rowsFromMatrix(res.data);
 }
 
@@ -50,5 +51,5 @@ export async function parseUpload(file: File): Promise<RawRow[]> {
     const data = await readSheet(Buffer.from(await file.arrayBuffer()));
     return rowsFromMatrix(data as unknown[][]);
   }
-  throw new Error("Obsługiwane formaty: .csv, .xlsx");
+  throw new LocalizedError("unsupportedFormat");
 }

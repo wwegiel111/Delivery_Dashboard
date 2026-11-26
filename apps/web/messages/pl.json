@@ -1,0 +1,668 @@
+{
+  "common": {
+    "appName": "ETPromo",
+    "appTagline": "przyjęcia dostaw",
+    "dash": "—",
+    "ellipsis": "…",
+    "close": "Zamknij",
+    "requiredHint": "* pole wymagane",
+    "pallets": "{count, plural, one {# paleta} few {# palety} many {# palet} other {# palety}}",
+    "palletsShort": "{count} pal.",
+    "trucks": "{count, plural, one {# auto} few {# auta} many {# aut} other {# auta}}",
+    "docks": "{count, plural, one {# stanowisko} few {# stanowiska} many {# stanowisk} other {# stanowiska}}",
+    "crews": "{count, plural, one {# grupa} few {# grupy} many {# grup} other {# grupy}} po {size} os.",
+    "waybills": "{count, plural, one {# list przewozowy} few {# listy przewozowe} many {# listów przewozowych} other {# listu przewozowego}}",
+    "range": "{from}–{to}"
+  },
+  "metadata": {
+    "title": "ETPromo — plan przyjęć dostaw",
+    "description": "Planowanie przyjęć dostaw: godziny przyjazdów i stanowiska rozładunkowe",
+    "helpTitle": "Instrukcja — ETPromo"
+  },
+  "navigation": {
+    "mainNav": "Menu główne",
+    "schedule": "Plan przyjęć",
+    "deliveries": "Dostawy",
+    "settings": "Parametry"
+  },
+  "language": {
+    "label": "Język",
+    "names": {
+      "pl": "Polski",
+      "en": "English"
+    },
+    "short": {
+      "pl": "PL",
+      "en": "EN"
+    },
+    "switchTo": "Przełącz na: {language}",
+    "current": "Bieżący język: {language}"
+  },
+  "statuses": {
+    "run": {
+      "SOLVING": "generowanie…",
+      "OPTIMAL": "optymalny",
+      "FEASIBLE": "poprawny",
+      "INFEASIBLE": "brak wykonalnego planu",
+      "ERROR": "błąd",
+      "UNKNOWN": "nieznany",
+      "MODEL_INVALID": "błędne dane"
+    }
+  },
+  "deliveries": {
+    "title": "Dostawy",
+    "summaryDay": "Na dzień {date}",
+    "summaryFromToday": "Od dziś",
+    "showAll": "pokaż wszystkie",
+    "addTitle": "Dodaj dostawę",
+    "addDescription": "Dla pojedynczego auta spoza importu. Okno awizacji i priorytet możesz pominąć.",
+    "submit": "Dodaj dostawę",
+    "fields": {
+      "waybillNumber": "Nr listu przewozowego",
+      "carrier": "Przewoźnik",
+      "carrierEmail": "E-mail przewoźnika",
+      "truckPlate": "Nr rejestracyjny",
+      "supplier": "Dostawca",
+      "deliveryDate": "Data dostawy",
+      "windowFrom": "Awizacja od",
+      "windowTo": "Awizacja do",
+      "pallets": "Liczba palet",
+      "priority": "Priorytet (1–10)",
+      "hardWindow": "Sztywne okno awizacji"
+    },
+    "hints": {
+      "windowFrom": "puste = od początku pracy",
+      "windowTo": "puste = do końca pracy",
+      "pallets": "maks. {max} (pojemność bufora)",
+      "priority": "5 = zwykły, 10 = najwyższy"
+    },
+    "dayLinksLabel": "Plany dni:",
+    "planForDay": "{date} →",
+    "table": {
+      "caption": "Lista dostaw",
+      "date": "Data",
+      "waybill": "List przewozowy",
+      "carrier": "Przewoźnik",
+      "email": "E-mail",
+      "truck": "Auto",
+      "supplier": "Dostawca",
+      "window": "Awizacja",
+      "pallets": "Palety",
+      "actions": "Akcje"
+    },
+    "wholeDay": "cały dzień",
+    "hard": " (sztywne)",
+    "cancel": "Anuluj",
+    "cancelAria": "Anuluj dostawę {waybill}",
+    "empty": "Brak dostaw. Zaimportuj plik albo dodaj dostawę ręcznie."
+  },
+  "import": {
+    "title": "Import dostaw (CSV / XLSX)",
+    "description": "Każdy wiersz to jedno auto, a wiersze z tym samym numerem listu łączymy w jedną dostawę.",
+    "template": "pobierz szablon",
+    "fileLabel": "Plik z dostawami",
+    "check": "Sprawdź",
+    "commit": "Importuj",
+    "recognized": "Rozpoznano: {waybills}, {pallets}",
+    "imported": "Zaimportowano: {waybills}, {pallets}",
+    "days": " · dni: {days}",
+    "goToPlan": "Przejdź do planu na {date} →",
+    "errorsTitle": "Plik zawiera błędy, więc nic nie zostało zapisane. Popraw wskazane wiersze i sprawdź plik jeszcze raz.",
+    "rowError": "Wiersz {row}: {message}",
+    "requestFailed": "Nie udało się wysłać pliku: {error}"
+  },
+  "scheduling": {
+    "title": "Plan przyjęć — {date}",
+    "prevDay": "Poprzedni dzień",
+    "nextDay": "Następny dzień",
+    "dayInput": "Dzień",
+    "show": "Pokaż",
+    "daySummary": "{trucks} · {pallets} do przyjęcia",
+    "deliveriesLink": "lista dostaw",
+    "solveDay": "Ułóż plan dnia",
+    "solving": "Układam plan…",
+    "solveWeek": "Ułóż plan tygodnia",
+    "solvingWeek": "Układam {current}/{total} · {date}",
+    "weekFailed": "{date}: {error}",
+    "versions": "Wersje planu:",
+    "versionBadge": "#{id} · {created} · {status}",
+    "deleteVersion": "Usuń wersję #{id}",
+    "deleteConfirm": "Usunąć wersję planu #{id}? Tej operacji nie można cofnąć.",
+    "noDeliveriesTitle": "Na ten dzień nie ma dostaw",
+    "noDeliveriesBody": "Dodaj je lub zaimportuj na stronie <link>Dostawy</link>.",
+    "notPlannedTitle": "Plan na ten dzień nie jest jeszcze gotowy",
+    "notPlannedBody": "Kliknij „Ułóż plan dnia”, a aplikacja dobierze godzinę przyjazdu i stanowisko dla każdego auta.",
+    "staleTitle": "Plan jest nieaktualny — ułóż go ponownie przed wysłaniem",
+    "stale": {
+      "added": "{count, plural, one {# nowa dostawa} few {# nowe dostawy} many {# nowych dostaw} other {# nowej dostawy}}: {list}",
+      "changed": "zmienione: {list}",
+      "removed": "anulowane lub przeniesione: {list}"
+    },
+    "generating": {
+      "title": "Trwa generowanie planu…",
+      "body": "Optymalizujemy harmonogram dostaw. Wyniki pojawią się automatycznie po zakończeniu obliczeń.",
+      "week": "Plan tygodnia: dzień {current} z {total} · {date}"
+    },
+    "failure": {
+      "title": "Nie udało się wygenerować planu",
+      "infeasible": "Przy obecnych zasobach i oknach awizacji nie da się przyjąć wszystkich aut. Przenieś część dostaw, dodaj grupę rozładunkową albo wydłuż godziny pracy.",
+      "timeout": "W wyznaczonym czasie nie udało się znaleźć żadnego planu. Wydłuż maksymalny czas układania planu w Parametrach i spróbuj ponownie.",
+      "connection": "Nie udało się połączyć z modułem planowania. Sprawdź, czy usługa działa, i spróbuj ponownie.",
+      "unexpected": "Wystąpił nieoczekiwany błąd aplikacji. Spróbuj ponownie, a jeśli problem się powtórzy, zgłoś go administratorowi.",
+      "interrupted": "Generowanie zostało przerwane, zanim zapisano wynik. Ułóż plan ponownie.",
+      "details": "Szczegóły: {message}"
+    },
+    "state": {
+      "solving": "generowanie…",
+      "infeasible": "brak wykonalnego planu",
+      "timeout": "przekroczony czas",
+      "connection": "brak połączenia",
+      "unexpected": "błąd",
+      "interrupted": "przerwany"
+    },
+    "bottleneck": "Wózkowi nie nadążają: {crews, plural, one {grupa może} other {grupy mogą}} rozładować ok. <b>{crewRate} palet/h</b>, a na regały trafia tylko <b>{putawayRate} palet/h</b>. Więcej wózkowych lub większy bufor skróci dzień — zmienisz to w <link>Parametrach</link>.",
+    "pdf": "Pobierz PDF",
+    "runMeta": "Plan #{id} · {created} · {status} · {seconds} s",
+    "docLanguage": "Język PDF i wiadomości",
+    "tabs": {
+      "plan": "Przyjazdy",
+      "timeline": "Oś czasu",
+      "buffer": "Bufor",
+      "emails": "Wiadomości ({count})"
+    },
+    "table": {
+      "caption": "Godziny przyjazdów aut",
+      "arrival": "Przyjazd",
+      "dock": "Stanowisko",
+      "truck": "Auto",
+      "carrier": "Przewoźnik",
+      "waybill": "List przewozowy",
+      "pallets": "Palety",
+      "unload": "Rozładunek",
+      "crew": "Grupa",
+      "window": "Awizacja",
+      "late": "+{minutes} min"
+    },
+    "bufferNote": "Palety trafiają do bufora w trakcie rozładunku, a wózkowi na bieżąco odwożą je na regały. Godziny pracy: {from}–{to}.",
+    "emailsEmpty": "Brak wiadomości — w planie nie ma aut.",
+    "hintTruck": "dostawa #{id}",
+    "setupTitle": "Baza danych nie jest gotowa",
+    "week": {
+      "aria": "Dni tygodnia",
+      "summary": "Tydzień {from}–{to} · {trucks} · {pallets} · zaplanowane dni: {planned}/{total}",
+      "counts": "{trucks} · {pallets}",
+      "noDeliveries": "brak dostaw",
+      "noPlan": "brak planu",
+      "stale": "plan nieaktualny",
+      "done": "koniec {end}"
+    }
+  },
+  "statistics": {
+    "trucksPallets": {
+      "label": "Auta / palety",
+      "sub": "{docks} · {crews}"
+    },
+    "arrivals": {
+      "label": "Przyjazdy",
+      "sub": "od pierwszego przyjazdu do końca rozładunku"
+    },
+    "putaway": {
+      "label": "Wszystko na regałach",
+      "sub": "od tej godziny bufor jest pusty"
+    },
+    "crewUtilization": {
+      "label": "Wykorzystanie grup",
+      "sub": "rozładunek / czas pracy grup"
+    },
+    "late": {
+      "label": "Opóźnienia",
+      "subLate": "łącznie {minutes} min",
+      "subRelaxed": " · sztywne okna poluzowane",
+      "subOk": "wszystkie terminy dotrzymane"
+    },
+    "bufferPeak": {
+      "label": "Maksymalne zajęcie bufora",
+      "sub": "{percent} pojemności ({capacity} palet)"
+    }
+  },
+  "charts": {
+    "timeline": {
+      "legendAria": "Legenda",
+      "legendSetup": "podstawienie auta",
+      "legendUnload": "rozładunek",
+      "legendClosed": "poza godzinami pracy i zmiana zmian",
+      "legendBreak": "przerwa grupy",
+      "dockSub": "stanowisko",
+      "dockName": "Stanowisko {n}",
+      "crewLabel": "Grupa {n}",
+      "crewSub": "rozładunek",
+      "rowCount": "{trucks} · {sub}",
+      "break": "przerwa",
+      "breakTitle": "Przerwa {from}–{to}",
+      "breakAria": "{row}: przerwa {from}–{to}",
+      "truckAria": "{plate} {carrier}, list {waybill}, przyjazd {arrival}, stanowisko {dock}, grupa {crew}",
+      "tooltipTruck": "auto",
+      "tooltipWaybill": "list {waybill} · {pallets}",
+      "tooltipTimes": "przyjazd {arrival} · rozładunek {start}–{end}",
+      "tooltipDockCrew": "stanowisko {dock} · grupa {crew}",
+      "tooltipLate": "{minutes} min po terminie"
+    },
+    "buffer": {
+      "title": "Zajętość bufora (palety)",
+      "summary": "maks. {peak} z {capacity} · wózkowi odwożą do {perSlot} palet co {slot} min",
+      "aria": "Zajętość bufora w ciągu dnia, maksymalnie {peak} z {capacity} palet",
+      "capacity": "pojemność {capacity}",
+      "tooltipLevel": "w buforze: {count} palet",
+      "tooltipFlow": "przyjęto {inflow} · odwieziono {putaway}"
+    }
+  },
+  "settings": {
+    "title": "Parametry magazynu",
+    "intro": "Wersja {version} · {timezone}. Zapisanie zmian tworzy nową wersję, a gotowe plany zostają bez zmian.",
+    "cardTitle": "Zasoby i godziny pracy",
+    "save": "Zapisz jako nową wersję",
+    "groups": {
+      "resources": "Zasoby",
+      "times": "Czasy obsługi",
+      "hours": "Godziny pracy i zmiany",
+      "breaks": "Przerwy",
+      "solver": "Planowanie",
+      "weights": "Wagi planowania"
+    },
+    "weightsIntro": "Im wyższa waga, tym ważniejszy jest dany cel przy układaniu planu.",
+    "fields": {
+      "docks": {
+        "label": "Stanowiska rozładunkowe",
+        "hint": ""
+      },
+      "crews": {
+        "label": "Grupy rozładunkowe",
+        "hint": ""
+      },
+      "crewSize": {
+        "label": "Osoby w grupie",
+        "hint": "tylko do raportu"
+      },
+      "fullTruckMinutes": {
+        "label": "Rozładunek pełnego auta (min)",
+        "hint": ""
+      },
+      "fullTruckPallets": {
+        "label": "Palety w pełnym aucie",
+        "hint": ""
+      },
+      "dockSetupMinutes": {
+        "label": "Czas podstawienia (min)",
+        "hint": ""
+      },
+      "bufferCapacity": {
+        "label": "Pojemność bufora (palety)",
+        "hint": ""
+      },
+      "putawayPalletsPerHour": {
+        "label": "Wydajność wózkowych (palety/h)",
+        "hint": ""
+      },
+      "workFrom": {
+        "label": "Początek pracy",
+        "hint": ""
+      },
+      "workTo": {
+        "label": "Koniec pracy",
+        "hint": ""
+      },
+      "shiftChange": {
+        "label": "Zmiana zmian o",
+        "hint": ""
+      },
+      "shiftChangeMinutes": {
+        "label": "Przekazanie zmiany (min)",
+        "hint": ""
+      },
+      "breaksPerShift": {
+        "label": "Przerwy na zmianę",
+        "hint": ""
+      },
+      "breakMinutes": {
+        "label": "Długość przerwy (min)",
+        "hint": ""
+      },
+      "lastArrival": {
+        "label": "Ostatni przyjazd",
+        "hint": ""
+      },
+      "slotMinutes": {
+        "label": "Krok czasu (min)",
+        "hint": "5, 10, 15 lub 30"
+      },
+      "solverTimeLimitS": {
+        "label": "Maks. czas układania planu (s)",
+        "hint": ""
+      },
+      "weightTardiness": {
+        "label": "Dotrzymanie terminów",
+        "hint": ""
+      },
+      "weightMakespan": {
+        "label": "Wcześniejszy koniec dnia",
+        "hint": ""
+      },
+      "weightFlow": {
+        "label": "Wcześniejsze przyjazdy",
+        "hint": ""
+      },
+      "weightBuffer": {
+        "label": "Krótki postój palet w buforze",
+        "hint": ""
+      }
+    }
+  },
+  "validation": {
+    "time": "podaj godzinę w formacie GG:MM",
+    "waybillRequired": "podaj numer listu przewozowego",
+    "carrierRequired": "podaj przewoźnika",
+    "emailInvalid": "nieprawidłowy adres e-mail",
+    "deliveryDateRequired": "podaj datę dostawy",
+    "palletsPositive": "liczba palet musi być liczbą całkowitą większą od 0",
+    "priorityRange": "priorytet musi być liczbą od 1 do 10",
+    "palletsOverBuffer": "{pallets} palet to więcej, niż mieści bufor ({capacity})",
+    "windowOrder": "Koniec okna awizacji musi być później niż jego początek",
+    "intRange": "liczba całkowita od {min} do {max}",
+    "slot": "dozwolone wartości: 5, 10, 15 lub 30 min",
+    "workOrder": "Koniec pracy musi być później niż jej początek",
+    "lastArrivalRange": "Ostatni przyjazd musi wypadać w godzinach pracy",
+    "shiftChangeRange": "Zmiana zmian musi wypadać w godzinach pracy",
+    "paramsField": "{field}: {message}",
+    "import": {
+      "waybillMissing": "brak numeru listu przewozowego",
+      "carrierMissing": "brak przewoźnika",
+      "carrierEmailInvalid": "nieprawidłowy e-mail przewoźnika",
+      "dateFormat": "data dostawy w formacie RRRR-MM-DD lub DD.MM.RRRR",
+      "palletsInt": "liczba palet musi być liczbą całkowitą",
+      "palletsPositive": "liczba palet musi być większa od 0",
+      "priorityRange": "priorytet musi być liczbą od 1 do 10",
+      "windowFromFormat": "awizacja od: „{value}” — oczekiwano GG:MM",
+      "windowToFormat": "awizacja do: „{value}” — oczekiwano GG:MM",
+      "windowOrder": "okno awizacji kończy się przed swoim początkiem",
+      "inconsistent": "list {waybill}: inny przewoźnik lub data niż w wierszu {row}",
+      "overBuffer": "list {waybill}: {pallets} palet to więcej, niż mieści bufor ({capacity})"
+    }
+  },
+  "notifications": {
+    "deliveryAdded": "Dodano dostawę {waybill}",
+    "paramsSaved": "Zapisano parametry (wersja {version})",
+    "importNoEmail": "{waybills} bez e-maila przewoźnika — te wiadomości trzeba będzie wysłać samodzielnie",
+    "importUnchanged": "{waybills} bez zmian — pominięto"
+  },
+  "errors": {
+    "unexpected": "Nieoczekiwany błąd: {message}",
+    "http": "Błąd serwera (HTTP {status})",
+    "noFile": "Nie wybrano pliku",
+    "fileTooLarge": "Plik jest większy niż 10 MB",
+    "noRows": "Plik nie zawiera danych",
+    "unsupportedFormat": "Obsługiwane formaty: CSV i XLSX",
+    "csv": "Błąd pliku CSV: {message}",
+    "invalidId": "Nieprawidłowy identyfikator",
+    "invalidRequest": "Nieprawidłowe żądanie: {details}",
+    "planNotFound": "Nie znaleziono planu",
+    "planEmpty": "Plan nie zawiera żadnych przyjazdów",
+    "noActiveParams": "Brak aktywnych parametrów — uruchom `npm run db:seed`",
+    "noActiveDocks": "Brak aktywnych stanowisk — sprawdź parametry",
+    "planSolving": "Plan jest właśnie układany — poczekaj na wynik",
+    "duplicateWaybill": "Dostawa z tym numerem listu już istnieje",
+    "solverRejected": "Moduł planowania odrzucił żądanie ({status}): {body}",
+    "solverStatus": "Moduł planowania zwrócił błąd {status}",
+    "solverTimeout": "Moduł planowania nie odpowiedział na czas ({ms} ms)",
+    "solverUnreachable": "Brak połączenia z modułem planowania ({url}): {error}",
+    "solverResult": "Moduł planowania: {status}",
+    "fontMissing": "Brak czcionki {file} (pakiet dejavu-fonts-ttf)"
+  },
+  "solverHints": {
+    "overBuffer": "{pallets} palet nie zmieści się w buforze ({capacity})",
+    "fixedOutside": "ustalona godzina przyjazdu wypada poza godzinami pracy albo przed oknem awizacji",
+    "noSlot": "rozładunek nie zmieści się w godzinach pracy po otwarciu okna awizacji",
+    "breaksDontFit": "zmiana {shift}: przy wymaganych odstępach nie da się zmieścić {count} przerw",
+    "infeasible": "Przy obecnych zasobach nie da się przyjąć wszystkich aut w godzinach pracy. Przenieś część dostaw na inny dzień albo dodaj grupę rozładunkową.",
+    "timeout": "Nie udało się ułożyć planu w wyznaczonym czasie — wydłuż maksymalny czas układania planu",
+    "noTrucks": "brak aut do zaplanowania",
+    "duplicateIds": "powtarzające się identyfikatory aut",
+    "late": "rozładunek skończy się {minutes} min po terminie",
+    "leftover": "po zakończeniu pracy w buforze zostanie {count} palet"
+  },
+  "reports": {
+    "title": "Plan przyjęć dostaw — {date}",
+    "docTitle": "Plan przyjęć {date}",
+    "summary": "{warehouse} · {trucks} · {pallets} · przyjazdy {from}–{to} · {docks} · {crews} · wykorzystanie {crewCount, plural, one {grupy} other {grup}} {utilization}",
+    "columns": {
+      "arrival": "Przyjazd",
+      "dock": "Stanowisko",
+      "plate": "Nr rej.",
+      "carrier": "Przewoźnik",
+      "waybill": "List przewozowy",
+      "supplier": "Dostawca",
+      "pallets": "Palety",
+      "unload": "Rozładunek",
+      "crew": "Grupa"
+    },
+    "late": "po terminie awizacji",
+    "footer": "Godzina przyjazdu to godzina podstawienia auta pod stanowisko. Wygenerowano {generated} · plan #{id}",
+    "fileName": "plan-przyjec-{date}.pdf",
+    "defaultSignature": "Dział przyjęć ETPromo"
+  },
+  "emails": {
+    "greeting": "Dzień dobry,",
+    "intro": "potwierdzamy terminy rozładunku w magazynie {warehouse} na {date}:",
+    "line": "• {time} — stanowisko {dock} — {truck} — list przewozowy {waybill} ({pallets})",
+    "truckWithPlate": "auto {plate}",
+    "truck": "auto",
+    "arrive": "Prosimy o przyjazd o podanej godzinie i podstawienie auta pod wskazane stanowisko.",
+    "delay": "W razie opóźnienia prosimy o wcześniejszy kontakt — pozwoli nam to przesunąć kolejne rozładunki.",
+    "regards": "Pozdrawiamy",
+    "subject": "Awizacja rozładunku — {warehouse}, {date}",
+    "subjectCount": " ({trucks})",
+    "card": {
+      "noEmail": "brak e-maila przewoźnika — wyślij wiadomość samodzielnie",
+      "copy": "Kopiuj",
+      "copied": "Skopiowano",
+      "open": "Otwórz w poczcie",
+      "subjectPrefix": "Temat: {subject}"
+    }
+  },
+  "tooltips": {
+    "infoAria": "Pomoc: {topic}",
+    "metrics": {
+      "trucksPallets": "Liczba aut i palet w tym planie. Pod spodem widzisz, ile stanowisk i grup było do dyspozycji.",
+      "arrivals": "Godzina pierwszego przyjazdu i zakończenia ostatniego rozładunku. Im wcześniej kończy się dzień, tym większy zapas na spóźnione auta.",
+      "putaway": "Godzina, o której ostatnia paleta trafi z bufora na regał.",
+      "crewUtilization": "Jaka część czasu pracy grup przypada na rozładunek. Niska wartość oznacza, że grupy często czekają na auta albo na miejsce w buforze.",
+      "late": "Liczba aut, które skończą rozładunek po terminie z awizacji. Pod spodem widzisz łączne opóźnienie w minutach.",
+      "bufferPeak": "Największa liczba palet jednocześnie w buforze w ciągu dnia. Pokazuje, jak blisko było do zapełnienia bufora."
+    },
+    "params": {
+      "fullTruckMinutes": "Ile minut jedna grupa rozładowuje pełne auto. Mniej załadowane auta schodzą proporcjonalnie szybciej.",
+      "fullTruckPallets": "Ile palet mieści pełne auto. Razem z czasem rozładunku wyznacza tempo pracy grupy.",
+      "dockSetupMinutes": "Czas potrzebny na ustawienie auta przy stanowisku przed rozpoczęciem rozładunku. Grupa może w tym czasie rozładowywać inne auto.",
+      "bufferCapacity": "Maksymalna liczba palet, które mogą jednocześnie znajdować się w buforze.",
+      "putawayPalletsPerHour": "Liczba palet, które wózkowi razem odwożą z bufora na regały w ciągu godziny.",
+      "shiftChangeMinutes": "Ile trwa przekazanie zmiany. W tym czasie nie ma przyjazdów, rozładunku ani odwożenia palet.",
+      "breaksPerShift": "Ile przerw ma każda grupa w ciągu jednej zmiany. Godziny przerw aplikacja dobiera tak, by jak najmniej przeszkadzały.",
+      "lastArrival": "Najpóźniejsza godzina, o której może przyjechać auto. Zostawia czas na dokończenie rozładunku i opróżnienie bufora przed końcem pracy.",
+      "slotMinutes": "Co ile minut można planować przyjazdy i rozładunki. Mniejszy krok daje dokładniejszy plan, ale wydłuża jego układanie.",
+      "solverTimeLimitS": "Ile sekund aplikacja może szukać najlepszego planu. Po tym czasie wybiera najlepszy ze znalezionych.",
+      "weightTardiness": "Jak ważne jest kończenie rozładunku w terminie z awizacji. Wyższa wartość nadaje temu celowi większe znaczenie.",
+      "weightMakespan": "Jak ważne jest wcześniejsze zakończenie ostatniego rozładunku w ciągu dnia.",
+      "weightFlow": "Jak ważne jest przyjmowanie aut tak wcześnie, jak pozwalają ich okna awizacji.",
+      "weightBuffer": "Jak ważne jest, by palety jak najkrócej czekały w buforze na odwiezienie."
+    },
+    "fields": {
+      "windows": "Przedział czasu, w którym auto powinno przyjechać i zostać rozładowane. Puste pole oznacza brak ograniczenia.",
+      "priority": "Gdy nie wszystkie auta zdążą na czas, aplikacja w pierwszej kolejności chroni przed opóźnieniem dostawy z wyższym priorytetem.",
+      "hardWindow": "Rozładunek musi zmieścić się w oknie awizacji. Jeśli to niemożliwe, okno zostanie poluzowane, a plan pokaże ostrzeżenie."
+    },
+    "actions": {
+      "import": "Plik CSV lub XLSX z kolumnami numer_listu, przewoznik, data_dostawy i liczba_palet (pozostałe są opcjonalne). Najpierw kliknij „Sprawdź”, potem „Importuj”.",
+      "versions": "Każde ułożenie planu zapisuje się jako nowa wersja. Kliknij wersję, aby ją wyświetlić.",
+      "weekStrip": "Przegląd tygodnia: liczba aut i stan planu na każdy dzień. Ikona przy dniu pokazuje, czy plan jest gotowy, w trakcie generowania, nieaktualny czy się nie udał.",
+      "runStatus": "„Optymalny” to najlepszy możliwy plan. „Poprawny” spełnia wszystkie warunki, ale zabrakło czasu, by potwierdzić, że jest najlepszy."
+    },
+    "columns": {
+      "arrival": "Godzina, o której auto ma podjechać pod stanowisko — właśnie ją dostaje przewoźnik.",
+      "unload": "Godziny rozładunku, który zaczyna się po podstawieniu auta.",
+      "window": "Okno awizacji dostawy. Czerwone „+N min” oznacza, że rozładunek skończy się po terminie.",
+      "deliveryWindow": "Przedział, w którym auto powinno przyjechać i zostać rozładowane. Okno sztywne musi zostać dotrzymane."
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Witaj w ETPromo!",
+      "body": "W kilku krokach pokażemy Ci, jak wczytać dostawy, ułożyć plan przyjęć i przekazać go przewoźnikom.",
+      "meta": "{steps, plural, one {# krok} few {# krótkie kroki} many {# krótkich kroków} other {# kroku}} · ok. 2 minuty",
+      "safe": "Samouczek niczego nie zmienia w Twoich danych.",
+      "start": "Rozpocznij samouczek",
+      "later": "Zrobię to później",
+      "skip": "Pomiń samouczek"
+    },
+    "tour": {
+      "progress": "Krok {current} z {total}",
+      "next": "Dalej",
+      "prev": "Wstecz",
+      "finish": "Zakończ",
+      "close": "Zamknij samouczek",
+      "missing": "Ten element zobaczysz, gdy pojawią się dane — na przykład po ułożeniu planu."
+    },
+    "status": {
+      "not_started": "nierozpoczęty",
+      "in_progress": "w trakcie",
+      "paused": "przerwany",
+      "completed": "ukończony",
+      "skipped": "pominięty"
+    },
+    "steps": {
+      "welcome": {
+        "title": "Plan przyjęć w kilka minut",
+        "body": "ETPromo dobiera godzinę przyjazdu i stanowisko dla każdego auta, tak by rozładunek przebiegał płynnie. Zobaczmy, jak to działa."
+      },
+      "navigation": {
+        "title": "Trzy główne sekcje",
+        "body": "W „Dostawach” wczytujesz auta, w „Parametrach” opisujesz magazyn, a w „Planie przyjęć” układasz plan i wysyłasz go przewoźnikom."
+      },
+      "language": {
+        "title": "Język",
+        "body": "Tutaj zmienisz język aplikacji. Spróbuj od razu — samouczek przełączy się razem z nią."
+      },
+      "import": {
+        "title": "Wczytaj dostawy",
+        "body": "Najszybciej dodasz dostawy z pliku CSV lub Excela. Wybierz plik, kliknij „Sprawdź”, a jeśli nie ma błędów — „Importuj”."
+      },
+      "addDelivery": {
+        "title": "Pojedyncza dostawa",
+        "body": "Tym formularzem dodasz auto, którego nie ma w pliku. Okno awizacji i priorytet są opcjonalne."
+      },
+      "deliveryList": {
+        "title": "Lista dostaw",
+        "body": "Tu widzisz wszystkie nadchodzące auta. Kliknij datę, aby otworzyć plan tego dnia, albo anuluj auto, które nie przyjedzie."
+      },
+      "resources": {
+        "title": "Opisz swój magazyn",
+        "body": "Podaj liczbę stanowisk i grup, pojemność bufora, czasy rozładunku i godziny pracy. Ikona ⓘ przy polu wyjaśnia, co ono oznacza."
+      },
+      "weights": {
+        "title": "Co jest najważniejsze",
+        "body": "Wagi mówią aplikacji, na czym zależy Ci najbardziej — na przykład na dotrzymaniu terminów albo wcześniejszym końcu dnia. Domyślne wartości sprawdzą się w większości przypadków."
+      },
+      "saveSettings": {
+        "title": "Zapisz zmiany",
+        "body": "Nowe parametry obowiązują od następnego ułożenia planu. Gotowe plany się nie zmieniają."
+      },
+      "pickDay": {
+        "title": "Wybierz dzień",
+        "body": "Kliknij dzień w podglądzie tygodnia albo użyj strzałek i kalendarza powyżej. Ikona przy dniu pokazuje stan jego planu."
+      },
+      "generate": {
+        "title": "Ułóż plan",
+        "body": "Jeden przycisk układa plan wybranego dnia, drugi — całego tygodnia. Zwykle trwa to kilka sekund."
+      },
+      "kpis": {
+        "title": "Podsumowanie dnia",
+        "body": "Kafelki pokazują najważniejsze liczby: godziny przyjazdów, wykorzystanie grup, opóźnienia i zajęcie bufora. Jeśli coś jest niejasne, najedź na ⓘ."
+      },
+      "arrivals": {
+        "title": "Godziny przyjazdów",
+        "body": "To najważniejsza tabela: o której każde auto ma przyjechać i pod które stanowisko. Czerwone „+N min” oznacza, że rozładunek skończy się po terminie."
+      },
+      "timeline": {
+        "title": "Przebieg dnia",
+        "body": "Oś czasu pokazuje, co robią stanowiska i grupy w ciągu dnia. W zakładce „Bufor” sprawdzisz, ile palet czeka na odwiezienie."
+      },
+      "versions": {
+        "title": "Wersje planu",
+        "body": "Każde ułożenie planu zapisuje nową wersję, więc łatwo porównasz warianty. Niepotrzebne wersje możesz usunąć."
+      },
+      "share": {
+        "title": "Wyślij plan przewoźnikom",
+        "body": "Pobierz PDF albo skorzystaj z gotowych wiadomości w zakładce „Wiadomości”. Język dokumentów wybierzesz niezależnie od języka aplikacji."
+      },
+      "finish": {
+        "title": "Gotowe!",
+        "body": "Samouczek uruchomisz ponownie w każdej chwili przyciskiem „Pomoc”."
+      }
+    }
+  },
+  "help": {
+    "button": "Pomoc",
+    "buttonAria": "Otwórz pomoc",
+    "center": {
+      "title": "Pomoc",
+      "description": "Samouczek i krótka instrukcja obsługi.",
+      "status": "Samouczek: {status}",
+      "start": "Uruchom samouczek",
+      "restart": "Uruchom samouczek od nowa",
+      "resume": "Wróć do samouczka (krok {step} z {total})",
+      "manual": "Pełna instrukcja",
+      "contextHint": "Ikona ⓘ obok pola lub wskaźnika wyjaśnia, co oznacza."
+    },
+    "manual": {
+      "title": "Instrukcja",
+      "intro": "Krótki przewodnik po aplikacji. To samo, co w samouczku — do przeczytania w dowolnej chwili.",
+      "quickStartTitle": "Jak zacząć",
+      "quickStart": {
+        "s1": "Sprawdź „Parametry” i zapisz ustawienia swojego magazynu.",
+        "s2": "W „Dostawach” wczytaj plik z dostawami: najpierw „Sprawdź”, potem „Importuj”.",
+        "s3": "W „Planie przyjęć” wybierz dzień i kliknij „Ułóż plan dnia”.",
+        "s4": "Przejrzyj godziny przyjazdów i ewentualne opóźnienia.",
+        "s5": "Pobierz PDF albo wyślij gotowe wiadomości do przewoźników."
+      },
+      "tourTitle": "Ekran po ekranie",
+      "general": "Na start"
+    },
+    "faq": {
+      "title": "Częste pytania",
+      "items": {
+        "whyInfeasible": {
+          "q": "Dlaczego nie da się ułożyć planu?",
+          "a": "Przy obecnych zasobach nie wszystkie auta zmieszczą się w godzinach pracy. Przenieś część dostaw na inny dzień, dodaj grupę albo wydłuż godziny pracy."
+        },
+        "optimalVsFeasible": {
+          "q": "Czym różni się plan „optymalny” od „poprawnego”?",
+          "a": "Oba możesz wysłać. Plan optymalny jest najlepszy z możliwych, a przy poprawnym zabrakło czasu, by to potwierdzić."
+        },
+        "stale": {
+          "q": "Co znaczy „Plan jest nieaktualny”?",
+          "a": "Po ułożeniu planu zmieniły się dostawy na ten dzień. Ułóż plan ponownie przed wysłaniem."
+        },
+        "paramsChange": {
+          "q": "Czy zmiana parametrów zmieni gotowe plany?",
+          "a": "Nie. Nowe ustawienia obowiązują od następnego ułożenia planu."
+        },
+        "editDelivery": {
+          "q": "Jak poprawić dane dostawy?",
+          "a": "Zaimportuj plik z tym samym numerem listu przewozowego — dostawa zostanie zaktualizowana."
+        },
+        "sendEmails": {
+          "q": "Czy aplikacja sama wysyła maile?",
+          "a": "Nie. Kopiujesz gotową wiadomość albo otwierasz ją w swoim programie pocztowym."
+        }
+      }
+    }
+  }
+}

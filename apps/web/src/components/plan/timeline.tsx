@@ -2,6 +2,7 @@
 
 import { slotToDate } from "@etpromo/contracts/time";
 import { AlertTriangle } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fmtTime } from "@/lib/time-format";
 import { cn } from "@/lib/utils";
@@ -64,6 +65,10 @@ export function Timeline({
   breaks = [],
   tz,
 }: Props) {
+  const tl = useTranslations("charts.timeline");
+  const tc = useTranslations("common");
+  const locale = useLocale();
+  const time = (d: Date) => fmtTime(d, tz, locale);
   const start = useMemo(() => new Date(horizonStart), [horizonStart]);
   const box = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(1000);
@@ -103,15 +108,15 @@ export function Timeline({
     ...docks.map((d) => ({
       key: `d${d.number}`,
       label: d.name,
-      sub: "stanowisko",
+      sub: tl("dockSub"),
       items: trucks.filter((t) => t.dock === d.number),
       dock: true,
       breaks: [] as typeof breaks,
     })),
     ...Array.from({ length: crews }, (_, i) => ({
       key: `c${i + 1}`,
-      label: `Grupa ${i + 1}`,
-      sub: "rozładunek",
+      label: tl("crewLabel", { n: i + 1 }),
+      sub: tl("crewSub"),
       items: trucks.filter((t) => t.crew === i + 1),
       dock: false,
       breaks: breaks.filter((b) => b.crew === i + 1),
@@ -119,8 +124,9 @@ export function Timeline({
   ];
 
   return (
-    <div className="viz-root space-y-2">
+    <div className="viz-root space-y-2" data-tour="timeline">
       <ul
+        aria-label={tl("legendAria")}
         className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs"
         style={{ color: "var(--text-secondary)" }}
       >
@@ -133,7 +139,7 @@ export function Timeline({
                 "color-mix(in oklab, var(--flow-inbound) 22%, transparent)",
             }}
           />
-          podstawienie auta (stanowisko zajęte, grupa wolna)
+          {tl("legendSetup")}
         </li>
         <li className="flex items-center gap-1.5">
           <span
@@ -141,7 +147,7 @@ export function Timeline({
             className="inline-block size-3 rounded-sm"
             style={{ background: "var(--flow-inbound)" }}
           />
-          rozładunek na bufor
+          {tl("legendUnload")}
         </li>
         <li className="flex items-center gap-1.5">
           <span
@@ -149,7 +155,7 @@ export function Timeline({
             className="inline-block size-3 rounded-sm border"
             style={{ background: "var(--closed)" }}
           />
-          poza godzinami pracy / zmiana zmian
+          {tl("legendClosed")}
         </li>
         {breaks.length > 0 && (
           <li className="flex items-center gap-1.5">
@@ -158,7 +164,7 @@ export function Timeline({
               className="inline-block size-3 rounded-sm border"
               style={{ background: BREAK_BG }}
             />
-            przerwa grupy
+            {tl("legendBreak")}
           </li>
         )}
       </ul>
@@ -192,7 +198,7 @@ export function Timeline({
                     className="absolute top-1.5 pl-1 text-[11px] tabular-nums"
                     style={{ left: x(s), color: "var(--text-muted)" }}
                   >
-                    {fmtTime(at(s), tz)}
+                    {time(at(s))}
                   </span>
                 ))}
             </div>
@@ -224,7 +230,7 @@ export function Timeline({
                   className="text-[11px]"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  {r.items.length} aut · {r.sub}
+                  {tl("rowCount", { trucks: tc("trucks", { count: r.items.length }), sub: r.sub })}
                 </div>
               </div>
               <div
@@ -262,12 +268,12 @@ export function Timeline({
                       color: "var(--text-secondary)",
                       borderColor: "var(--grid)",
                     }}
-                    title={`Przerwa ${fmtTime(at(b.start_slot), tz)}–${fmtTime(at(b.end_slot), tz)}`}
-                    aria-label={`${r.label}: przerwa ${fmtTime(at(b.start_slot), tz)}–${fmtTime(at(b.end_slot), tz)}`}
+                    title={tl("breakTitle", { from: time(at(b.start_slot)), to: time(at(b.end_slot)) })}
+                    aria-label={tl("breakAria", { row: r.label, from: time(at(b.start_slot)), to: time(at(b.end_slot)) })}
                   >
                     {mounted &&
-                    (b.end_slot - b.start_slot) * px >= textWidth("przerwa") + 6
-                      ? "przerwa"
+                    (b.end_slot - b.start_slot) * px >= textWidth(tl("break")) + 6
+                      ? tl("break")
                       : ""}
                   </div>
                 ))}
@@ -292,11 +298,23 @@ export function Timeline({
                         width: Math.max(2, w),
                         height: ROW_H,
                       }}
-                      aria-label={`${t.truckPlate ?? ""} ${t.carrier}, list ${t.waybillNumber}, przyjazd ${fmtTime(at(t.arrivalSlot), tz)}, stanowisko ${t.dock}, grupa ${t.crew}`}
+                      aria-label={tl("truckAria", {
+                        plate: t.truckPlate ?? "",
+                        carrier: t.carrier,
+                        waybill: t.waybillNumber,
+                        arrival: time(at(t.arrivalSlot)),
+                        dock: t.dock,
+                        crew: t.crew,
+                      })}
                       onMouseMove={(e) =>
                         setHover({ t, x: e.clientX, y: e.clientY })
                       }
                       onMouseLeave={() => setHover(null)}
+                      onFocus={(e) => {
+                        const b = e.currentTarget.getBoundingClientRect();
+                        setHover({ t, x: b.left, y: b.bottom });
+                      }}
+                      onBlur={() => setHover(null)}
                     >
                       {setupW > 0 && (
                         <span
@@ -338,18 +356,16 @@ export function Timeline({
           style={{ left: hover.x + 14, top: hover.y + 14 }}
         >
           <div className="font-semibold">
-            {hover.t.truckPlate ?? "auto"} · {hover.t.carrier}
+            {hover.t.truckPlate ?? tl("tooltipTruck")} · {hover.t.carrier}
           </div>
           <div className="text-muted-foreground">
-            list {hover.t.waybillNumber} · {hover.t.pallets} palet
+            {tl("tooltipWaybill", { waybill: hover.t.waybillNumber, pallets: tc("pallets", { count: hover.t.pallets }) })}
           </div>
           <div className="tabular-nums text-muted-foreground">
-            przyjazd {fmtTime(at(hover.t.arrivalSlot), tz)} · rozładunek{" "}
-            {fmtTime(at(hover.t.startSlot), tz)}–
-            {fmtTime(at(hover.t.endSlot), tz)}
+            {tl("tooltipTimes", { arrival: time(at(hover.t.arrivalSlot)), start: time(at(hover.t.startSlot)), end: time(at(hover.t.endSlot)) })}
           </div>
           <div className="text-muted-foreground">
-            stanowisko {hover.t.dock} · grupa {hover.t.crew}
+            {tl("tooltipDockCrew", { dock: hover.t.dock, crew: hover.t.crew })}
           </div>
           {hover.t.lateBySlots > 0 && (
             <div
@@ -357,7 +373,7 @@ export function Timeline({
               style={{ color: "var(--critical)" }}
             >
               <AlertTriangle className="size-3" />{" "}
-              {hover.t.lateBySlots * slotMinutes} min po terminie awizacji
+              {tl("tooltipLate", { minutes: hover.t.lateBySlots * slotMinutes })}
             </div>
           )}
         </div>

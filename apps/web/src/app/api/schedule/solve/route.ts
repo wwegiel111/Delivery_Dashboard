@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { currentLocale } from "@/i18n/server";
+import { translator } from "@/i18n/translator";
+import { LocalizedError, localizeError, RunFailure } from "@/server/errors";
 import { runPlan } from "@/server/scheduling/plan";
 import { SolverError } from "@/server/scheduling/solver-client";
 
@@ -14,11 +17,15 @@ const Body = z.object({
 });
 
 export async function POST(request: Request) {
+  const locale = await currentLocale();
   const parsed = Body.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: z.prettifyError(parsed.error) }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: translator(locale)("errors.invalidRequest", { details: z.prettifyError(parsed.error) }) }, { status: 400 });
   try {
     return NextResponse.json(await runPlan(parsed.data.date, { timeLimitS: parsed.data.timeLimitS }));
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: err instanceof SolverError ? 502 : 500 });
+    // `runId` (gdy przebieg zdążył się zapisać) pozwala interfejsowi pokazać wynik w panelu planu zamiast osobnego komunikatu.
+    const cause = err instanceof RunFailure ? err.cause : err;
+    const status = cause instanceof SolverError ? 502 : cause instanceof LocalizedError && cause.key === "planSolving" ? 409 : 500;
+    return NextResponse.json({ error: localizeError(err, locale), ...(err instanceof RunFailure ? { runId: err.runId } : {}) }, { status });
   }
 }

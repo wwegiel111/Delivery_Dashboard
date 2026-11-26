@@ -1,4 +1,8 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
+
+// next-intl bez prefiksów w URL: język z cookie, konfiguracja w src/i18n/request.ts.
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const config: NextConfig = {
   transpilePackages: ["@etpromo/contracts", "@etpromo/db"],
@@ -6,4 +10,4 @@ const config: NextConfig = {
   serverExternalPackages: ["pdfkit"],
 };
 
-export default config;
+export default withNextIntl(config);
