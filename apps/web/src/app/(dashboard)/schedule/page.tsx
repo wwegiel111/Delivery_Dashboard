@@ -1,59 +1,37 @@
 import { localDayStart, localTimeOn, slotToDate } from "@etpromo/contracts";
 import { prisma } from "@etpromo/db";
-import {
-  AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
-  FileDown,
-  Info,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, CircleDashed, Info, Loader2, XCircle } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import type { ReactNode } from "react";
+import { HelpTip, WithHelp, type MetricId } from "@/components/help/descriptions";
 import { BufferChart } from "@/components/plan/buffer-chart";
-import { EmailCard } from "@/components/plan/email-card";
+import { CarrierEmails, DocumentLanguageProvider, DocumentLanguageSelect, PdfButton, type EmailsByLocale } from "@/components/plan/document-language";
+import { GenerationGate, SolvingWatcher } from "@/components/plan/generation";
+import { PlanTabs } from "@/components/plan/plan-tabs";
 import { Timeline } from "@/components/plan/timeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RUN_STATUS_LABEL } from "@/lib/labels";
-import { fmtDayTime, fmtTime, isoDay } from "@/lib/time-format";
-import {
-  carrierEmails,
-  crewsPl,
-  longDate,
-  mailtoHref,
-} from "@/server/report/report";
-import {
-  deliveriesForDate,
-  getActiveParams,
-  getRunView,
-  listRuns,
-  reportData,
-  weekOverview,
-  type RunView,
-  type WeekDay,
-} from "@/server/scheduling/plan";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LOCALES, type Locale } from "@/i18n/config";
+import { currentLocale } from "@/i18n/server";
+import { translator, type Translator } from "@/i18n/translator";
+import { fmtDayTime, fmtNumber, fmtPercent, fmtTime, isoDay, longDate, shortDate, weekdayShort } from "@/lib/time-format";
+import { localizeError } from "@/server/errors";
+import { carrierEmails, crewsPl, docksText, mailtoHref } from "@/server/report/report";
+import { dockLabel, translateHint } from "@/server/scheduling/hints";
+import { mainPanel, type FailureKind, type RunPhase } from "@/server/scheduling/run-state";
+import { deliveriesForDate, getActiveParams, getRunView, listRuns, reportData, weekOverview, type RunView, type WeekDay } from "@/server/scheduling/plan";
 import { DeleteRunButton, SolveWeekButton } from "./run-actions";
 import { SolveButton } from "./solve-button";
 
 export const dynamic = "force-dynamic";
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
+type RunStatusKey = RunView["status"];
 
 async function defaultDate(tz: string): Promise<string> {
   const today = isoDay(new Date(), tz);
@@ -74,139 +52,151 @@ function shiftDay(iso: string, days: number) {
   return d.toISOString().slice(0, 10);
 }
 
-export default async function SchedulePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ date?: string; run?: string }>;
-}) {
+export default async function SchedulePage({ searchParams }: { searchParams: Promise<{ date?: string; run?: string }> }) {
   const sp = await searchParams;
+  const locale = await currentLocale();
+  const t = translator(locale);
   let params;
   try {
     params = await getActiveParams();
   } catch (e) {
-    return <SetupNeeded message={e instanceof Error ? e.message : String(e)} />;
+    return <SetupNeeded title={t("scheduling.setupTitle")} message={localizeError(e, locale)} />;
   }
   const tz = params.timezone;
   const date = sp.date && ISO.test(sp.date) ? sp.date : await defaultDate(tz);
-  const [deliveries, runs, week] = await Promise.all([
-    deliveriesForDate(date),
-    listRuns(date),
-    weekOverview(date),
-  ]);
+  const [deliveries, runs, week] = await Promise.all([deliveriesForDate(date), listRuns(date), weekOverview(date)]);
   const runId = sp.run ? Number(sp.run) : runs[0]?.id;
-  const view = runId ? await getRunView(runId) : null;
+  const view = runId ? await getRunView(runId, locale) : null;
   const pallets = deliveries.reduce((s, d) => s + d.pallets, 0);
+  const tg = await getTranslations("scheduling");
+  const explicitRun = !!sp.run && !!view;
+  // Trwające generowanie (według bazy) to stan „w toku”, nigdy porażka — patrz mainPanel().
+  const panel = mainPanel({ view, explicitRun, pendingHere: false });
+  const daySolving = runs.some((r) => r.phase === "solving");
+  const anySolving = daySolving || week.some((d) => d.run?.phase === "solving");
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Plan przyjęć — {longDate(date)}
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{tg("title", { date: longDate(date, locale) })}</h1>
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <Button
-              asChild
-              variant="ghost"
-              size="icon"
-              aria-label="Poprzedni dzień"
-            >
+            <Button asChild variant="ghost" size="icon" aria-label={tg("prevDay")}>
               <Link href={`/schedule?date=${shiftDay(date, -1)}`}>
                 <ChevronLeft />
               </Link>
             </Button>
             <form action="/schedule" className="flex items-center gap-2">
-              <Input
-                type="date"
-                name="date"
-                defaultValue={date}
-                className="h-8 w-40"
-                aria-label="Dzień przyjęć"
-              />
+              <Input type="date" name="date" defaultValue={date} className="h-8 w-40" aria-label={tg("dayInput")} lang={locale} />
               <Button type="submit" variant="outline" size="sm">
-                Pokaż
+                {tg("show")}
               </Button>
             </form>
-            <Button
-              asChild
-              variant="ghost"
-              size="icon"
-              aria-label="Następny dzień"
-            >
+            <Button asChild variant="ghost" size="icon" aria-label={tg("nextDay")}>
               <Link href={`/schedule?date=${shiftDay(date, 1)}`}>
                 <ChevronRight />
               </Link>
             </Button>
             <span>
-              {deliveries.length} aut · {pallets} palet do przyjęcia ·{" "}
+              {tg("daySummary", { trucks: t("common.trucks", { count: deliveries.length }), pallets: t("common.pallets", { count: pallets }) })} ·{" "}
               <Link className="underline" href={`/deliveries?date=${date}`}>
-                lista dostaw
+                {tg("deliveriesLink")}
               </Link>
             </span>
           </div>
         </div>
-        <div className="flex flex-wrap items-start gap-2">
-          <SolveWeekButton
-            days={week.filter((d) => d.trucks > 0).map((d) => d.date)}
-            current={date}
-          />
-          <SolveButton date={date} disabled={deliveries.length === 0} />
+        <div className="flex flex-wrap items-start gap-2" data-tour="solve-buttons">
+          <SolveWeekButton days={week.filter((d) => d.trucks > 0).map((d) => d.date)} />
+          <SolveButton date={date} disabled={deliveries.length === 0} serverSolving={daySolving} />
         </div>
       </div>
 
-      <WeekStrip week={week} selected={date} tz={tz} />
+      <WeekStrip week={week} selected={date} tz={tz} locale={locale} t={t} />
 
       {runs.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          <span className="text-muted-foreground">Wersje planu:</span>
+        <div className="flex flex-wrap items-center gap-1.5 text-xs" data-tour="versions">
+          <WithHelp help={<HelpTip group="actions" id="versions" topic={tg("versions")} />} className="text-muted-foreground">
+            {tg("versions")}
+          </WithHelp>
           {runs.map((r) => (
-            <Link key={r.id} href={`/schedule?date=${date}&run=${r.id}`}>
-              <Badge variant={r.id === runId ? "default" : "outline"}>
-                #{r.id} · {fmtDayTime(r.createdAt, tz)} ·{" "}
-                {RUN_STATUS_LABEL[r.status]}
+            <Link key={r.id} href={`/schedule?date=${date}&run=${r.id}`} aria-current={r.id === runId ? "true" : undefined}>
+              <Badge variant={r.id === runId ? "default" : "outline"} className="gap-1">
+                <StateIcon phase={r.phase} />
+                {tg("versionBadge", { id: r.id, created: fmtDayTime(r.createdAt, tz, locale), status: runLabel(r, t) })}
               </Badge>
             </Link>
           ))}
-          {runId && runs.some((r) => r.id === runId) && (
-            <DeleteRunButton runId={runId} date={date} />
-          )}
+          {runId && runs.some((r) => r.id === runId && r.phase !== "solving") && <DeleteRunButton runId={runId} date={date} />}
         </div>
       )}
 
-      {!view ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {deliveries.length === 0
-                ? "Brak dostaw na ten dzień"
-                : "Plan jeszcze nie został ułożony"}
-            </CardTitle>
-            <CardDescription>
-              {deliveries.length === 0 ? (
-                <>
-                  Zaimportuj listy przewozowe na stronie{" "}
-                  <Link className="underline" href="/deliveries">
-                    Dostawy
-                  </Link>
-                  .
-                </>
-              ) : (
-                <>
-                  Kliknij „Ułóż plan przyjęć”. Solver dobierze godziny przyjazdu
-                  i stanowiska tak, by {params.crews === 1 ? "grupa" : "grupy"}{" "}
-                  ({crewsPl(params.crews, params.crewSize)}){" "}
-                  {params.crews === 1 ? "pracowała" : "pracowały"} bez
-                  przestojów, a bufor ({params.bufferCapacity} palet) nie
-                  przepełnił się, zanim wózkowi odniosą palety na regał.
-                </>
-              )}
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      ) : (
-        <RunDetails view={view} tz={tz} params={params} />
-      )}
+      <SolvingWatcher solving={anySolving} />
+      <GenerationGate date={date} serverPanel={panel} explicitRun={explicitRun} hasView={!!view}>
+        {!view ? (
+          <Card data-tour="plan-empty">
+            <CardHeader>
+              <CardTitle>{deliveries.length === 0 ? tg("noDeliveriesTitle") : tg("notPlannedTitle")}</CardTitle>
+              <CardDescription>
+                {deliveries.length === 0
+                  ? tg.rich("noDeliveriesBody", {
+                      link: (chunks) => (
+                        <Link className="underline" href="/deliveries">
+                          {chunks}
+                        </Link>
+                      ),
+                    })
+                  : tg("notPlannedBody")}
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        ) : panel === "failure" ? (
+          <FailurePanel view={view} t={t} />
+        ) : (
+          <RunDetails view={view} tz={tz} params={params} locale={locale} t={t} />
+        )}
+      </GenerationGate>
     </div>
+  );
+}
+
+/** Etykieta wersji planu zgodna z jej stanem (w toku / gotowy / rodzaj porażki). */
+function runLabel(r: { status: RunView["status"]; phase: RunPhase; failure: FailureKind | null }, t: Translator): string {
+  if (r.phase === "solving") return t("scheduling.state.solving");
+  if (r.phase === "failed") return t(`scheduling.state.${r.failure ?? "unexpected"}`);
+  return t(`statuses.run.${r.status}`);
+}
+
+/** Ikona stanu — kolor nie jest jedynym nośnikiem informacji (tekst obok zawsze opisuje stan). */
+function StateIcon({ phase, stale }: { phase: RunPhase | null; stale?: boolean }) {
+  if (phase === "solving") return <Loader2 aria-hidden className="size-3 shrink-0 animate-spin motion-reduce:animate-none" />;
+  if (phase === "failed") return <XCircle aria-hidden className="size-3 shrink-0" />;
+  if (phase === "success" && stale) return <AlertTriangle aria-hidden className="size-3 shrink-0" />;
+  if (phase === "success") return <CheckCircle2 aria-hidden className="size-3 shrink-0" />;
+  return <CircleDashed aria-hidden className="size-3 shrink-0" />;
+}
+
+/** Czerwony panel tylko dla zakończonego przebiegu bez planu — z przyczyną i praktyczną wskazówką. */
+function FailurePanel({ view, t }: { view: RunView; t: Translator }) {
+  const kind = view.failure ?? "unexpected";
+  // Ogólne komunikaty solvera powtarzałyby opis — zostawiamy tylko konkretne (np. które auto się nie mieści).
+  const generic = new Set([t("solverHints.infeasible"), t("solverHints.timeout")]);
+  const hints = view.hints.map((h) => ({ ...h, reason: translateHint(h.reason, t, view.slotMinutes) })).filter((h) => !generic.has(h.reason));
+  const showDetails = (kind === "connection" || kind === "unexpected") && view.errorMessage;
+  return (
+    <Card className="border-destructive" role="alert" data-state="failed">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-destructive dark:text-red-400 [@media(prefers-color-scheme:dark)]:text-red-400">
+          <XCircle className="size-4 shrink-0" aria-hidden /> {t("scheduling.failure.title")}
+        </CardTitle>
+        <CardDescription>{t(`scheduling.failure.${kind}`)}</CardDescription>
+      </CardHeader>
+      {(showDetails || hints.length > 0) && (
+        <CardContent className="space-y-2">
+          {showDetails && <p className="text-xs text-muted-foreground">{t("scheduling.failure.details", { message: view.errorMessage! })}</p>}
+          <Hints hints={hints} rows={view.rows} t={t} />
+        </CardContent>
+      )}
+    </Card>
   );
 }
 
@@ -214,190 +204,183 @@ async function RunDetails({
   view,
   tz,
   params,
+  locale,
+  t,
 }: {
   view: RunView;
   tz: string;
   params: Awaited<ReturnType<typeof getActiveParams>>;
+  locale: Locale;
+  t: Translator;
 }) {
-  const ok = view.status === "OPTIMAL" || view.status === "FEASIBLE";
+  const tg = await getTranslations("scheduling");
+  const ok = view.phase === "success";
   const start = new Date(view.horizonStart);
   const at = (s: number) => slotToDate(start, s, view.slotMinutes);
+  const time = (s: number) => fmtTime(at(s), tz, locale);
   const k = view.kpis;
-  const report = ok ? await reportData(view.id) : null;
-  const emails = report ? carrierEmails(report.rows, report.meta) : [];
-  const rows = [...view.rows].sort(
-    (a, b) => a.arrivalSlot - b.arrivalSlot || a.dock - b.dock,
-  );
+  // Maile w obu językach — przełącznik „Język PDF i wiadomości” wybiera wersję bez ponownego zapytania.
+  const emails: EmailsByLocale = { pl: [], en: [] };
+  if (ok) {
+    const report = await reportData(view.id, locale);
+    if (report) for (const l of LOCALES) emails[l] = carrierEmails(report.rows, { ...report.meta, locale: l }).map((e) => ({ ...e, href: mailtoHref(e) }));
+  }
+  const rows = [...view.rows].sort((a, b) => a.arrivalSlot - b.arrivalSlot || a.dock - b.dock);
   const dayStart = localDayStart(view.planDate, tz);
   const windowLabel = (from: string | null, to: string | null) =>
     from || to
-      ? `${from ? fmtTime(new Date(from), tz) : "…"}–${to ? fmtTime(new Date(to), tz) : "…"}`
-      : "cały dzień";
+      ? t("common.range", {
+          from: from ? fmtTime(new Date(from), tz, locale) : t("common.ellipsis"),
+          to: to ? fmtTime(new Date(to), tz, locale) : t("common.ellipsis"),
+        })
+      : t("deliveries.wholeDay");
+  const statusLabel = (s: RunStatusKey) => t(`statuses.run.${s}`);
+  const hints = view.hints.map((h) => ({ ...h, reason: translateHint(h.reason, t, view.slotMinutes) }));
 
   // Wąskie gardło: tempo rozładunku grup vs tempo odnoszenia wózkowych.
-  const crewRate = Math.round(
-    (view.crews * params.fullTruckPallets * 60) / params.fullTruckMinutes,
-  );
+  const crewRate = Math.round((view.crews * params.fullTruckPallets * 60) / params.fullTruckMinutes);
   const putawayRate = Math.round((view.putawayPerSlot * 60) / view.slotMinutes);
-  const bottleneck =
-    ok &&
-    k &&
-    k.trucks > 1 &&
-    putawayRate < crewRate &&
-    k.crew_utilization < 0.8;
+  const bottleneck = ok && k && k.trucks > 1 && putawayRate < crewRate && k.crew_utilization < 0.8;
+  const totalPallets = view.rows.reduce((s, r) => s + r.pallets, 0);
 
   return (
     <>
       {view.staleReasons.length > 0 && (
-        <Card className="border-amber-500/60">
+        <Card className="border-amber-500/60" role="status">
           <CardHeader className="py-4">
             <CardTitle className="flex items-center gap-2 text-base">
-              <AlertTriangle className="size-4" style={{ color: "#fab219" }} />{" "}
-              Plan jest nieaktualny — ułóż go ponownie przed wysłaniem
+              <AlertTriangle className="size-4" style={{ color: "#fab219" }} aria-hidden /> {tg("staleTitle")}
             </CardTitle>
             <CardDescription>{view.staleReasons.join(" · ")}</CardDescription>
           </CardHeader>
         </Card>
       )}
 
-      {!ok ? (
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="size-4" />{" "}
-              {RUN_STATUS_LABEL[view.status]}
-            </CardTitle>
-            <CardDescription>
-              {view.errorMessage ?? "Nie udało się ułożyć planu."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Hints hints={view.hints} rows={view.rows} />
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      {ok && (
+        <DocumentLanguageProvider>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" data-tour="kpis">
             <Stat
-              label="Aut / palet"
-              value={`${k!.trucks} / ${view.rows.reduce((s, r) => s + r.pallets, 0)}`}
-              sub={`${view.docks.length} stanowiska · ${crewsPl(view.crews, view.crewSize)}`}
+              metric="trucksPallets"
+              label={t("statistics.trucksPallets.label")}
+              value={`${k!.trucks} / ${totalPallets}`}
+              sub={t("statistics.trucksPallets.sub", { docks: docksText(view.docks.length, locale), crews: crewsPl(view.crews, view.crewSize, locale) })}
             />
             <Stat
-              label="Przyjazdy"
-              value={`${fmtTime(at(k!.first_arrival_slot), tz)}–${fmtTime(at(k!.last_unload_end_slot), tz)}`}
-              sub="pierwszy przyjazd – koniec rozładunków"
+              metric="arrivals"
+              label={t("statistics.arrivals.label")}
+              value={t("common.range", { from: time(k!.first_arrival_slot), to: time(k!.last_unload_end_slot) })}
+              sub={t("statistics.arrivals.sub")}
+            />
+            <Stat metric="putaway" label={t("statistics.putaway.label")} value={time(k!.all_putaway_slot)} sub={t("statistics.putaway.sub")} />
+            <Stat
+              metric="crewUtilization"
+              label={t("statistics.crewUtilization.label")}
+              value={fmtPercent(k!.crew_utilization, locale)}
+              sub={t("statistics.crewUtilization.sub")}
             />
             <Stat
-              label="Wszystko na regale"
-              value={fmtTime(at(k!.all_putaway_slot), tz)}
-              sub="bufor pusty"
-            />
-            <Stat
-              label="Wykorzystanie grup"
-              value={`${Math.round(k!.crew_utilization * 100)}%`}
-              sub="czas rozładunków / czas pracy grup"
-            />
-            <Stat
-              label="Opóźnienia względem awizacji"
+              metric="late"
+              label={t("statistics.late.label")}
               value={String(k!.late_trucks)}
               sub={
                 k!.late_trucks
-                  ? `łącznie ${k!.total_tardiness_slots * view.slotMinutes} min${view.relaxed ? " · twarde okna poluzowane" : ""}`
-                  : "wszystkie okna dotrzymane"
+                  ? t("statistics.late.subLate", { minutes: k!.total_tardiness_slots * view.slotMinutes }) +
+                    (view.relaxed ? t("statistics.late.subRelaxed") : "")
+                  : t("statistics.late.subOk")
               }
+            />
+            <Stat
+              metric="bufferPeak"
+              label={t("statistics.bufferPeak.label")}
+              value={`${k!.max_buffer} / ${view.bufferCapacity}`}
+              sub={t("statistics.bufferPeak.sub", {
+                percent: fmtPercent(k!.max_buffer / Math.max(1, view.bufferCapacity), locale),
+                capacity: view.bufferCapacity,
+              })}
             />
           </div>
 
           {bottleneck && (
-            <p className="flex items-start gap-2 rounded-md border bg-card p-3 text-sm">
-              <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+            <div className="flex items-start gap-2 rounded-md border bg-card p-3 text-sm" role="note">
+              <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
               <span>
-                Wąskim gardłem jest odnoszenie z bufora: grupy mogą rozładować
-                ok. <b>{crewRate} palet/h</b>, a wózkowi odnoszą{" "}
-                <b>{putawayRate} palet/h</b>, przy buforze na{" "}
-                {view.bufferCapacity} palet. Dlatego{" "}
-                {view.crews === 1 ? "grupa" : "grupy"} część dnia czeka
-                (wykorzystanie grup {Math.round(k!.crew_utilization * 100)}%).
-                Więcej wózkowych przy odnoszeniu lub większy bufor skróci dzień
-                — zmień to w{" "}
-                <Link className="underline" href="/settings">
-                  Parametrach
-                </Link>{" "}
-                i ułóż plan ponownie.
+                {tg.rich("bottleneck", {
+                  crews: view.crews,
+                  crewRate,
+                  putawayRate,
+                  b: (chunks) => <b>{chunks}</b>,
+                  link: (chunks) => (
+                    <Link className="underline" href="/settings">
+                      {chunks}
+                    </Link>
+                  ),
+                })}
               </span>
-            </p>
+            </div>
           )}
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button asChild>
-              <a href={`/api/schedule/${view.id}/report`}>
-                <FileDown /> Pobierz PDF planu
-              </a>
-            </Button>
-            <span className="text-xs text-muted-foreground">
-              Plan #{view.id} · ułożony{" "}
-              {fmtDayTime(new Date(view.createdAt), tz)} ·{" "}
-              {RUN_STATUS_LABEL[view.status]} (
-              {((view.wallTimeMs ?? 0) / 1000).toFixed(1)} s)
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2" data-tour="share-tools">
+              <PdfButton runId={view.id} />
+              <DocumentLanguageSelect />
+            </div>
+            <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+              {tg("runMeta", {
+                id: view.id,
+                created: fmtDayTime(new Date(view.createdAt), tz, locale),
+                status: statusLabel(view.status),
+                seconds: fmtNumber((view.wallTimeMs ?? 0) / 1000, locale, { maximumFractionDigits: 1, minimumFractionDigits: 1 }),
+              })}
+              <HelpTip group="actions" id="runStatus" topic={statusLabel(view.status)} />
             </span>
           </div>
 
-          <Tabs defaultValue="plan">
+          <PlanTabs>
             <TabsList className="h-auto flex-wrap">
-              <TabsTrigger value="plan">Plan przyjazdów</TabsTrigger>
-              <TabsTrigger value="timeline">Oś czasu</TabsTrigger>
-              <TabsTrigger value="buffer">Bufor</TabsTrigger>
-              <TabsTrigger value="emails">
-                Wiadomości do przewoźników ({emails.length})
-              </TabsTrigger>
+              <TabsTrigger value="plan">{tg("tabs.plan")}</TabsTrigger>
+              <TabsTrigger value="timeline">{tg("tabs.timeline")}</TabsTrigger>
+              <TabsTrigger value="buffer">{tg("tabs.buffer")}</TabsTrigger>
+              <TabsTrigger value="emails">{tg("tabs.emails", { count: emails[locale].length })}</TabsTrigger>
             </TabsList>
             <TabsContent value="plan">
-              <Card>
+              <Card data-tour="plan-table">
                 <Table>
+                  <caption className="sr-only">{tg("table.caption")}</caption>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Przyjazd</TableHead>
-                      <TableHead>Stanowisko</TableHead>
-                      <TableHead>Auto</TableHead>
-                      <TableHead>Przewoźnik</TableHead>
-                      <TableHead>List przewozowy</TableHead>
-                      <TableHead className="text-right">Palety</TableHead>
-                      <TableHead>Rozładunek</TableHead>
-                      <TableHead>Grupa</TableHead>
-                      <TableHead>Awizacja</TableHead>
+                      <TableHead>
+                        <WithHelp help={<HelpTip group="columns" id="arrival" topic={tg("table.arrival")} />}>{tg("table.arrival")}</WithHelp>
+                      </TableHead>
+                      <TableHead>{tg("table.dock")}</TableHead>
+                      <TableHead>{tg("table.truck")}</TableHead>
+                      <TableHead>{tg("table.carrier")}</TableHead>
+                      <TableHead>{tg("table.waybill")}</TableHead>
+                      <TableHead className="text-right">{tg("table.pallets")}</TableHead>
+                      <TableHead>
+                        <WithHelp help={<HelpTip group="columns" id="unload" topic={tg("table.unload")} />}>{tg("table.unload")}</WithHelp>
+                      </TableHead>
+                      <TableHead>{tg("table.crew")}</TableHead>
+                      <TableHead>
+                        <WithHelp help={<HelpTip group="columns" id="window" topic={tg("table.window")} />}>{tg("table.window")}</WithHelp>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {rows.map((r) => (
                       <TableRow key={r.deliveryId}>
-                        <TableCell className="text-base font-semibold">
-                          {fmtTime(at(r.arrivalSlot), tz)}
-                        </TableCell>
-                        <TableCell className="text-base font-semibold">
-                          {r.dock}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {r.truckPlate ?? "—"}
-                        </TableCell>
+                        <TableCell className="text-base font-semibold">{time(r.arrivalSlot)}</TableCell>
+                        <TableCell className="text-base font-semibold">{r.dock}</TableCell>
+                        <TableCell className="font-mono text-xs">{r.truckPlate ?? t("common.dash")}</TableCell>
                         <TableCell>{r.carrier}</TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {r.waybillNumber}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {r.pallets}
-                        </TableCell>
-                        <TableCell>
-                          {fmtTime(at(r.startSlot), tz)}–
-                          {fmtTime(at(r.endSlot), tz)}
-                        </TableCell>
+                        <TableCell className="font-mono text-xs">{r.waybillNumber}</TableCell>
+                        <TableCell className="text-right">{r.pallets}</TableCell>
+                        <TableCell>{t("common.range", { from: time(r.startSlot), to: time(r.endSlot) })}</TableCell>
                         <TableCell>{r.crew}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {windowLabel(r.windowFrom, r.windowTo)}
                           {r.lateBySlots > 0 && (
                             <span className="ml-1 inline-flex items-center gap-1 font-medium text-destructive">
-                              <AlertTriangle className="size-3" /> +
-                              {r.lateBySlots * view.slotMinutes} min
+                              <AlertTriangle className="size-3" aria-hidden /> {tg("table.late", { minutes: r.lateBySlots * view.slotMinutes })}
                             </span>
                           )}
                         </TableCell>
@@ -410,7 +393,7 @@ async function RunDetails({
             <TabsContent value="timeline">
               <Timeline
                 trucks={view.rows}
-                docks={view.docks}
+                docks={view.docks.map((d) => ({ number: d.number, name: dockLabel(d.name, d.number, t) }))}
                 crews={view.crews}
                 horizonStart={view.horizonStart}
                 slotMinutes={view.slotMinutes}
@@ -433,91 +416,67 @@ async function RunDetails({
                 tz={tz}
               />
               <p className="text-xs text-muted-foreground">
-                Palety wjeżdżają na bufor równomiernie w czasie rozładunku, a
-                wózkowi odbierają je na bieżąco. Bufor dzielą wszystkie
-                stanowiska; solver nie dopuszcza do jego przepełnienia. Godziny
-                pracy: {fmtTime(localTimeOn(dayStart, params.workFrom, tz), tz)}
-                –{params.workTo}.
+                {tg("bufferNote", { from: fmtTime(localTimeOn(dayStart, params.workFrom, tz), tz, locale), to: params.workTo })}
               </p>
             </TabsContent>
             <TabsContent value="emails">
-              <div className="grid gap-4 lg:grid-cols-2">
-                {emails.map((e) => (
-                  <EmailCard
-                    key={e.carrier + e.to}
-                    carrier={e.carrier}
-                    to={e.to}
-                    subject={e.subject}
-                    body={e.body}
-                    trucks={e.trucks}
-                    href={mailtoHref(e)}
-                  />
-                ))}
-              </div>
+              <CarrierEmails emails={emails} />
             </TabsContent>
-          </Tabs>
-          {view.hints.length > 0 && (
-            <Hints hints={view.hints} rows={view.rows} />
+          </PlanTabs>
+          {hints.length > 0 && (
+            <div>
+              <Hints hints={hints} rows={view.rows} t={t} />
+            </div>
           )}
-        </>
+        </DocumentLanguageProvider>
       )}
     </>
   );
 }
 
-const WEEKDAY = ["pon", "wt", "śr", "czw", "pt", "sob", "nd"];
-
 /** Tydzień w pigułce: dostawy i ostatni plan każdego dnia. */
-function WeekStrip({
-  week,
-  selected,
-  tz,
-}: {
-  week: WeekDay[];
-  selected: string;
-  tz: string;
-}) {
-  const visible = week.filter(
-    (d, i) => i < 5 || d.trucks > 0 || d.date === selected,
-  );
+function WeekStrip({ week, selected, tz, locale, t }: { week: WeekDay[]; selected: string; tz: string; locale: Locale; t: Translator }) {
+  const visible = week.filter((d, i) => i < 5 || d.trucks > 0 || d.date === selected);
   const total = week.reduce((s, d) => s + d.trucks, 0);
   const pallets = week.reduce((s, d) => s + d.pallets, 0);
-  const isOk = (d: WeekDay) =>
-    !!d.run && (d.run.status === "OPTIMAL" || d.run.status === "FEASIBLE");
-  const fmt = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}`;
+  const isOk = (d: WeekDay) => d.run?.phase === "success";
   return (
-    <nav aria-label="Dni tygodnia" className="space-y-1.5">
-      <p className="text-xs text-muted-foreground">
-        Tydzień {fmt(week[0]!.date)}–{fmt(week[6]!.date)} · {total} aut ·{" "}
-        {pallets} palet ·{" "}
-        {week.filter((d) => d.trucks > 0 && isOk(d) && !d.run!.stale).length}/
-        {week.filter((d) => d.trucks > 0).length} dni zaplanowanych
+    <nav aria-label={t("scheduling.week.aria")} className="space-y-1.5" data-tour="week-strip">
+      <p className="flex items-center gap-1 text-xs text-muted-foreground">
+        {t("scheduling.week.summary", {
+          from: shortDate(week[0]!.date, locale),
+          to: shortDate(week[6]!.date, locale),
+          trucks: t("common.trucks", { count: total }),
+          pallets: t("common.pallets", { count: pallets }),
+          planned: week.filter((d) => d.trucks > 0 && isOk(d) && !d.run!.stale).length,
+          total: week.filter((d) => d.trucks > 0).length,
+        })}
+        <HelpTip group="actions" id="weekStrip" topic={t("scheduling.week.aria")} />
       </p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7">
         {visible.map((d) => {
-          const i = (new Date(`${d.date}T12:00:00Z`).getUTCDay() + 6) % 7;
-          const ok = isOk(d);
-          const warn = d.trucks > 0 && (!ok || !!d.run?.stale);
           const at = (s: number | null) =>
-            s === null || !d.run
-              ? "—"
-              : fmtTime(
-                  slotToDate(
-                    new Date(d.run.horizonStart),
-                    s,
-                    d.run.slotMinutes,
-                  ),
-                  tz,
-                );
+            s === null || !d.run ? t("common.dash") : fmtTime(slotToDate(new Date(d.run.horizonStart), s, d.run.slotMinutes), tz, locale);
+          // Kolory: szary = brak planu, bursztyn + spinner = generowanie, bursztyn + trójkąt = plan nieaktualny,
+          // zielony = gotowy plan, czerwony = porażka. Brak wyniku nie jest porażką.
+          const phase = d.trucks ? (d.run?.phase ?? null) : null;
+          const tone =
+            phase === "solving" || (phase === "success" && d.run?.stale)
+              ? "text-amber-700 dark:text-amber-400 [@media(prefers-color-scheme:dark)]:text-amber-400"
+              : phase === "failed"
+                ? "text-destructive dark:text-red-400 [@media(prefers-color-scheme:dark)]:text-red-400"
+                : phase === "success"
+                  ? "text-emerald-700 dark:text-emerald-400 [@media(prefers-color-scheme:dark)]:text-emerald-400"
+                  : "text-muted-foreground";
           const status = !d.trucks
-            ? "brak dostaw"
+            ? t("scheduling.week.noDeliveries")
             : !d.run
-              ? "bez planu"
-              : !ok
-                ? RUN_STATUS_LABEL[d.run.status].toLowerCase()
+              ? t("scheduling.week.noPlan")
+              : d.run.phase !== "success"
+                ? runLabel(d.run, t)
                 : d.run.stale
-                  ? "plan nieaktualny"
-                  : `koniec ${at(d.run.lastEndSlot)} · regał ${at(d.run.putawaySlot)}`;
+                  ? t("scheduling.week.stale")
+                  : t("scheduling.week.done", { end: at(d.run.lastEndSlot) });
           return (
             <Link
               key={d.date}
@@ -525,18 +484,16 @@ function WeekStrip({
               aria-current={d.date === selected ? "date" : undefined}
               className={`rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:bg-accent ${d.date === selected ? "border-foreground" : ""}`}
             >
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="font-medium">
-                  {WEEKDAY[i]} {fmt(d.date)}
+              <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+                <span className="whitespace-nowrap font-medium">
+                  {weekdayShort(d.date, locale)} {shortDate(d.date, locale)}
                 </span>
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {d.trucks} aut · {d.pallets} pal.
+                <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+                  {t("scheduling.week.counts", { trucks: t("common.trucks", { count: d.trucks }), pallets: t("common.palletsShort", { count: d.pallets }) })}
                 </span>
               </div>
-              <div
-                className={`mt-0.5 flex items-center gap-1 text-xs ${warn ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}
-              >
-                {warn && <AlertTriangle className="size-3 shrink-0" />}
+              <div className={`mt-0.5 flex items-center gap-1 text-xs ${tone}`} data-state={phase ?? "none"}>
+                {d.trucks > 0 && <StateIcon phase={phase} stale={d.run?.stale} />}
                 <span className="truncate">{status}</span>
               </div>
             </Link>
@@ -547,28 +504,16 @@ function WeekStrip({
   );
 }
 
-function Hints({
-  hints,
-  rows,
-}: {
-  hints: RunView["hints"];
-  rows: RunView["rows"];
-}) {
+function Hints({ hints, rows, t }: { hints: RunView["hints"]; rows: RunView["rows"]; t: Translator }) {
   if (hints.length === 0) return null;
-  const ref = (id: string | null) =>
-    id
-      ? (rows.find((r) => String(r.deliveryId) === id)?.waybillNumber ??
-        `dostawa #${id}`)
-      : null;
+  const ref = (id: string | null) => (id ? (rows.find((r) => String(r.deliveryId) === id)?.waybillNumber ?? t("scheduling.hintTruck", { id })) : null);
   return (
     <ul className="space-y-1.5 text-sm">
       {hints.map((h, i) => (
         <li key={i} className="flex gap-2">
-          <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
           <span>
-            {ref(h.truck_id) && (
-              <span className="font-mono text-xs">{ref(h.truck_id)} — </span>
-            )}
+            {ref(h.truck_id) && <span className="font-mono text-xs">{ref(h.truck_id)} — </span>}
             {h.reason}
           </span>
         </li>
@@ -577,36 +522,29 @@ function Hints({
   );
 }
 
-function Stat({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-}) {
+function Stat({ metric, label, value, sub }: { metric: MetricId; label: string; value: ReactNode; sub?: string }) {
   return (
     <Card>
       <CardContent className="space-y-1 p-4">
-        <div className="text-xs text-muted-foreground">{label}</div>
-        <div className="text-xl font-semibold">{value}</div>
+        <div className="flex items-start justify-between gap-1 text-xs text-muted-foreground">
+          <span>{label}</span>
+          <HelpTip group="metrics" id={metric} topic={label} />
+        </div>
+        <div className="text-xl font-semibold tabular-nums">{value}</div>
         {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
       </CardContent>
     </Card>
   );
 }
 
-function SetupNeeded({ message }: { message: string }) {
+function SetupNeeded({ title, message }: { title: string; message: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Baza nie jest gotowa</CardTitle>
+        <CardTitle>{title}</CardTitle>
         <CardDescription>{message}</CardDescription>
       </CardHeader>
-      <CardContent className="font-mono text-xs text-muted-foreground">
-        npm run db:migrate && npm run db:seed
-      </CardContent>
+      <CardContent className="font-mono text-xs text-muted-foreground">npm run db:migrate && npm run db:seed</CardContent>
     </Card>
   );
 }

@@ -1,7 +1,11 @@
 /**
  * Raport planu przyjęć: tabela przyjazdów (PDF) i treści maili do przewoźników.
  * Czyste funkcje — wejście to zapisany plan, bez dostępu do bazy.
+ * Język dokumentu (`ReportMeta.locale`) jest niezależny od języka interfejsu; domyślnie polski.
  */
+import { DEFAULT_LOCALE, INTL_LOCALE, type Locale } from "@/i18n/config";
+import { translator } from "@/i18n/translator";
+import { longDate as longDateLocale } from "@/lib/time-format";
 
 export interface PlanRow {
   arrivalAt: Date;
@@ -25,6 +29,8 @@ export interface ReportMeta {
   signature: string;
   generatedAt: Date;
   runId: number;
+  /** Język PDF i treści maili (domyślnie `pl`). */
+  locale?: Locale;
 }
 
 export interface CarrierEmail {
@@ -35,37 +41,36 @@ export interface CarrierEmail {
   trucks: number;
 }
 
-export function palletsPl(n: number): string {
-  const lastTwo = n % 100;
-  const last = n % 10;
-  if (n === 1) return "1 paleta";
-  if (last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14)) return `${n} palety`;
-  return `${n} palet`;
+/** „1 paleta”, „2 palety”, „5 palet” / „1 pallet”, „2 pallets”. */
+export function palletsText(n: number, locale: Locale): string {
+  return translator(locale)("common.pallets", { count: n });
 }
 
-export function trucksPl(n: number): string {
-  const lastTwo = n % 100;
-  const last = n % 10;
-  if (n === 1) return "1 auto";
-  if (last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14)) return `${n} auta`;
-  return `${n} aut`;
+/** „1 auto”, „2 auta”, „5 aut” / „1 truck”, „2 trucks”. */
+export function trucksText(n: number, locale: Locale): string {
+  return translator(locale)("common.trucks", { count: n });
 }
 
-/** „1 grupa po 2 os.”, „2 grupy po 4 os.”, „5 grup po 3 os.” */
-export function crewsPl(crews: number, size: number): string {
-  const lastTwo = crews % 100;
-  const last = crews % 10;
-  const word = crews === 1 ? "grupa" : last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14) ? "grupy" : "grup";
-  return `${crews} ${word} po ${size} os.`;
+/** Polska odmiana (zgodność wstecz; jeden argument — bezpieczne w `.map(palletsPl)`). */
+export const palletsPl = (n: number): string => palletsText(n, "pl");
+export const trucksPl = (n: number): string => trucksText(n, "pl");
+
+/** „1 grupa po 2 os.”, „2 grupy po 4 os.”, „5 grup po 3 os.” / „2 crews of 4”. */
+export function crewsPl(crews: number, size: number, locale: Locale = DEFAULT_LOCALE): string {
+  return translator(locale)("common.crews", { count: crews, size });
 }
 
-export function hhmm(d: Date, tz: string): string {
-  return new Intl.DateTimeFormat("pl-PL", { timeZone: tz, hour: "2-digit", minute: "2-digit" }).format(d);
+/** „4 stanowiska” / „4 docks”. */
+export function docksText(n: number, locale: Locale = DEFAULT_LOCALE): string {
+  return translator(locale)("common.docks", { count: n });
 }
 
-export function longDate(isoDate: string): string {
-  const d = new Date(`${isoDate}T12:00:00Z`);
-  return new Intl.DateTimeFormat("pl-PL", { timeZone: "UTC", weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" }).format(d);
+export function hhmm(d: Date, tz: string, locale: Locale = DEFAULT_LOCALE): string {
+  return new Intl.DateTimeFormat(INTL_LOCALE[locale], { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d);
+}
+
+export function longDate(isoDate: string, locale: Locale = DEFAULT_LOCALE): string {
+  return longDateLocale(isoDate, locale);
 }
 
 export function sortRows(rows: PlanRow[]): PlanRow[] {
@@ -77,6 +82,8 @@ export function sortRows(rows: PlanRow[]): PlanRow[] {
  * osobne maile powstają tylko, gdy przewoźnik podał kilka różnych adresów (np. różni dyspozytorzy).
  */
 export function carrierEmails(rows: PlanRow[], meta: ReportMeta): CarrierEmail[] {
+  const locale = meta.locale ?? DEFAULT_LOCALE;
+  const t = translator(locale);
   const byCarrier = new Map<string, PlanRow[]>();
   for (const r of sortRows(rows)) {
     const key = r.carrier.trim().toLowerCase();
@@ -94,30 +101,36 @@ export function carrierEmails(rows: PlanRow[], meta: ReportMeta): CarrierEmail[]
       groups.push({ to: a, list: own });
     }
   }
-  const date = longDate(meta.planDate);
+  const date = longDate(meta.planDate, locale);
   return groups.map(({ to, list }) => {
     const first = list[0]!;
-    const lines = list.map((r) => {
-      const truck = r.truckPlate ? `auto ${r.truckPlate}` : "auto";
-      return `• ${hhmm(r.arrivalAt, meta.timezone)} — stanowisko ${r.dock} — ${truck} — list przewozowy ${r.waybillNumber} (${palletsPl(r.pallets)})`;
-    });
+    const lines = list.map((r) =>
+      t("emails.line", {
+        time: hhmm(r.arrivalAt, meta.timezone, locale),
+        dock: r.dock,
+        truck: r.truckPlate ? t("emails.truckWithPlate", { plate: r.truckPlate }) : t("emails.truck"),
+        waybill: r.waybillNumber,
+        pallets: palletsText(r.pallets, locale),
+      }),
+    );
     const body = [
-      "Dzień dobry,",
+      t("emails.greeting"),
       "",
-      `potwierdzamy terminy rozładunku w magazynie ${meta.warehouseName} na ${date}:`,
+      t("emails.intro", { warehouse: meta.warehouseName, date }),
       "",
       ...lines,
       "",
-      "Prosimy o przyjazd o wskazanej godzinie i podstawienie auta na wskazane stanowisko rozładunkowe.",
-      "W razie opóźnienia prosimy o wcześniejszy kontakt — pozwoli to przesunąć kolejne rozładunki.",
+      t("emails.arrive"),
+      t("emails.delay"),
       "",
-      "Pozdrawiamy,",
+      t("emails.regards"),
       meta.signature,
     ].join("\n");
+    const count = list.length > 1 ? t("emails.subjectCount", { trucks: trucksText(list.length, locale) }) : "";
     return {
       carrier: first.carrier,
       to,
-      subject: `Awizacja rozładunku ${meta.warehouseName} — ${date}${list.length > 1 ? ` (${trucksPl(list.length)})` : ""}`,
+      subject: t("emails.subject", { warehouse: meta.warehouseName, date }) + count,
       body,
       trucks: list.length,
     };

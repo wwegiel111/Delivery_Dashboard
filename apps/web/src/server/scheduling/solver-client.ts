@@ -1,11 +1,15 @@
 import { SolveResponse, type SolveRequest } from "@etpromo/contracts";
+import { LocalizedError, type ErrorKey, type ErrorValues } from "../errors";
 
-export class SolverError extends Error {
+/** Błąd komunikacji z solverem (komunikat tłumaczony w warstwie HTTP). */
+export class SolverError extends LocalizedError {
   constructor(
-    message: string,
+    key: ErrorKey,
+    values: ErrorValues = {},
     readonly status?: number,
   ) {
-    super(message);
+    super(key, values);
+    this.name = "SolverError";
   }
 }
 
@@ -26,8 +30,8 @@ export async function callSolver(req: SolveRequest): Promise<SolveResponse> {
       if (!res.ok) {
         const body = await res.text();
         // 4xx = błąd kontraktu, ponawianie nic nie da.
-        if (res.status < 500) throw new SolverError(`Solver odrzucił żądanie (${res.status}): ${body.slice(0, 500)}`, res.status);
-        throw new SolverError(`Solver zwrócił ${res.status}`, res.status);
+        if (res.status < 500) throw new SolverError("solverRejected", { status: res.status, body: body.slice(0, 500) }, res.status);
+        throw new SolverError("solverStatus", { status: res.status }, res.status);
       }
       return SolveResponse.parse(await res.json());
     } catch (err) {
@@ -37,7 +41,7 @@ export async function callSolver(req: SolveRequest): Promise<SolveResponse> {
       await new Promise((r) => setTimeout(r, 500));
     }
   }
-  if (lastError instanceof Error && lastError.name === "TimeoutError") throw new SolverError(`Przekroczono czas oczekiwania na solver (${timeoutMs} ms)`);
+  if (lastError instanceof Error && lastError.name === "TimeoutError") throw new SolverError("solverTimeout", { ms: timeoutMs });
   if (lastError instanceof SolverError) throw lastError;
-  throw new SolverError(`Brak połączenia z solverem pod ${base}: ${String(lastError)}`);
+  throw new SolverError("solverUnreachable", { url: base, error: String(lastError) });
 }

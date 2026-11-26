@@ -1,0 +1,668 @@
+{
+  "common": {
+    "appName": "ETPromo",
+    "appTagline": "inbound deliveries",
+    "dash": "—",
+    "ellipsis": "…",
+    "close": "Close",
+    "requiredHint": "* required",
+    "pallets": "{count, plural, one {# pallet} other {# pallets}}",
+    "palletsShort": "{count} plt",
+    "trucks": "{count, plural, one {# truck} other {# trucks}}",
+    "docks": "{count, plural, one {# dock} other {# docks}}",
+    "crews": "{count, plural, one {# team} other {# teams}} of {size}",
+    "waybills": "{count, plural, one {# consignment note} other {# consignment notes}}",
+    "range": "{from}–{to}"
+  },
+  "metadata": {
+    "title": "ETPromo — Delivery schedule",
+    "description": "Plan inbound deliveries: arrival times and unloading docks",
+    "helpTitle": "User guide — ETPromo"
+  },
+  "navigation": {
+    "mainNav": "Main menu",
+    "schedule": "Schedule",
+    "deliveries": "Deliveries",
+    "settings": "Settings"
+  },
+  "language": {
+    "label": "Language",
+    "names": {
+      "pl": "Polski",
+      "en": "English"
+    },
+    "short": {
+      "pl": "PL",
+      "en": "EN"
+    },
+    "switchTo": "Switch to {language}",
+    "current": "Current language: {language}"
+  },
+  "statuses": {
+    "run": {
+      "SOLVING": "generating…",
+      "OPTIMAL": "optimal",
+      "FEASIBLE": "valid",
+      "INFEASIBLE": "no feasible schedule",
+      "ERROR": "error",
+      "UNKNOWN": "unknown",
+      "MODEL_INVALID": "invalid input"
+    }
+  },
+  "deliveries": {
+    "title": "Deliveries",
+    "summaryDay": "For {date}",
+    "summaryFromToday": "From today",
+    "showAll": "show all",
+    "addTitle": "Add a delivery",
+    "addDescription": "For a single truck that isn’t in your import file. The time window and priority are optional.",
+    "submit": "Add delivery",
+    "fields": {
+      "waybillNumber": "Consignment note no.",
+      "carrier": "Carrier",
+      "carrierEmail": "Carrier e-mail",
+      "truckPlate": "Registration no.",
+      "supplier": "Supplier",
+      "deliveryDate": "Delivery date",
+      "windowFrom": "Window opens",
+      "windowTo": "Window closes",
+      "pallets": "Pallets",
+      "priority": "Priority (1–10)",
+      "hardWindow": "Fixed time window"
+    },
+    "hints": {
+      "windowFrom": "blank = from opening time",
+      "windowTo": "blank = until closing time",
+      "pallets": "max. {max} (staging capacity)",
+      "priority": "5 = normal, 10 = highest"
+    },
+    "dayLinksLabel": "Daily schedules:",
+    "planForDay": "{date} →",
+    "table": {
+      "caption": "Delivery list",
+      "date": "Date",
+      "waybill": "Consignment note",
+      "carrier": "Carrier",
+      "email": "E-mail",
+      "truck": "Vehicle",
+      "supplier": "Supplier",
+      "window": "Time window",
+      "pallets": "Pallets",
+      "actions": "Actions"
+    },
+    "wholeDay": "any time",
+    "hard": " (fixed)",
+    "cancel": "Cancel",
+    "cancelAria": "Cancel delivery {waybill}",
+    "empty": "No deliveries yet. Import a file or add a delivery manually."
+  },
+  "import": {
+    "title": "Import deliveries (CSV / XLSX)",
+    "description": "One row per truck. Rows with the same consignment note number are merged into a single delivery.",
+    "template": "download template",
+    "fileLabel": "Delivery file",
+    "check": "Check",
+    "commit": "Import",
+    "recognized": "Found {waybills} and {pallets}",
+    "imported": "Imported {waybills} and {pallets}",
+    "days": " · days: {days}",
+    "goToPlan": "Open the schedule for {date} →",
+    "errorsTitle": "The file has errors, so nothing was saved. Fix the rows below and check the file again.",
+    "rowError": "Row {row}: {message}",
+    "requestFailed": "Upload failed: {error}"
+  },
+  "scheduling": {
+    "title": "Delivery schedule — {date}",
+    "prevDay": "Previous day",
+    "nextDay": "Next day",
+    "dayInput": "Day",
+    "show": "Go",
+    "daySummary": "{trucks} · {pallets} due",
+    "deliveriesLink": "view deliveries",
+    "solveDay": "Generate daily schedule",
+    "solving": "Generating…",
+    "solveWeek": "Generate weekly schedule",
+    "solvingWeek": "Generating {current}/{total} · {date}",
+    "weekFailed": "{date}: {error}",
+    "versions": "Versions:",
+    "versionBadge": "#{id} · {created} · {status}",
+    "deleteVersion": "Delete version #{id}",
+    "deleteConfirm": "Delete schedule version #{id}? This can’t be undone.",
+    "noDeliveriesTitle": "No deliveries on this day",
+    "noDeliveriesBody": "Add or import them on the <link>Deliveries</link> page.",
+    "notPlannedTitle": "No schedule for this day yet",
+    "notPlannedBody": "Click “Generate daily schedule” to give every truck an arrival time and a dock.",
+    "staleTitle": "This schedule is out of date — regenerate it before sending",
+    "stale": {
+      "added": "{count, plural, one {# new delivery} other {# new deliveries}}: {list}",
+      "changed": "changed: {list}",
+      "removed": "cancelled or moved: {list}"
+    },
+    "generating": {
+      "title": "Generating schedule…",
+      "body": "The delivery schedule is being optimized. Results will appear automatically once the calculations are complete.",
+      "week": "Weekly schedule: day {current} of {total} · {date}"
+    },
+    "failure": {
+      "title": "Unable to generate schedule",
+      "infeasible": "Not every truck can be handled with your current resources and time windows. Move some deliveries, add an unloading team or extend working hours.",
+      "timeout": "No schedule could be found in the time allowed. Increase the max. scheduling time in Settings and try again.",
+      "connection": "The scheduling engine couldn’t be reached. Check that the service is running, then try again.",
+      "unexpected": "Something went wrong in the app. Try again, and if the problem persists, contact your administrator.",
+      "interrupted": "Generation was interrupted before the result was saved. Please generate the schedule again.",
+      "details": "Details: {message}"
+    },
+    "state": {
+      "solving": "generating…",
+      "infeasible": "no feasible schedule",
+      "timeout": "timed out",
+      "connection": "connection error",
+      "unexpected": "error",
+      "interrupted": "interrupted"
+    },
+    "bottleneck": "Forklift operators can’t keep up: the {crews, plural, one {team can} other {teams can}} unload about <b>{crewRate} pallets/h</b>, but only <b>{putawayRate} pallets/h</b> reach the racks. More forklift operators or a larger staging area would shorten the day — you can change this in <link>Settings</link>.",
+    "pdf": "Download PDF",
+    "runMeta": "Schedule #{id} · {created} · {status} · {seconds} s",
+    "docLanguage": "PDF and message language",
+    "tabs": {
+      "plan": "Arrivals",
+      "timeline": "Timeline",
+      "buffer": "Staging area",
+      "emails": "Messages ({count})"
+    },
+    "table": {
+      "caption": "Truck arrival times",
+      "arrival": "Arrival",
+      "dock": "Dock",
+      "truck": "Vehicle",
+      "carrier": "Carrier",
+      "waybill": "Consignment note",
+      "pallets": "Pallets",
+      "unload": "Unloading",
+      "crew": "Team",
+      "window": "Time window",
+      "late": "+{minutes} min"
+    },
+    "bufferNote": "Pallets enter the staging area during unloading, and forklift operators move them to the racks as they go. Working hours: {from}–{to}.",
+    "emailsEmpty": "No messages — this schedule has no trucks.",
+    "hintTruck": "delivery #{id}",
+    "setupTitle": "The database isn’t ready",
+    "week": {
+      "aria": "Days of the week",
+      "summary": "Week of {from}–{to} · {trucks} · {pallets} · {planned}/{total} days scheduled",
+      "counts": "{trucks} · {pallets}",
+      "noDeliveries": "no deliveries",
+      "noPlan": "not scheduled",
+      "stale": "out of date",
+      "done": "done by {end}"
+    }
+  },
+  "statistics": {
+    "trucksPallets": {
+      "label": "Trucks / pallets",
+      "sub": "{docks} · {crews}"
+    },
+    "arrivals": {
+      "label": "Arrivals",
+      "sub": "first arrival to last unload"
+    },
+    "putaway": {
+      "label": "All pallets racked",
+      "sub": "staging area empty from then on"
+    },
+    "crewUtilization": {
+      "label": "Team utilization",
+      "sub": "unloading vs. working time"
+    },
+    "late": {
+      "label": "Late unloads",
+      "subLate": "{minutes} min in total",
+      "subRelaxed": " · fixed windows relaxed",
+      "subOk": "all time windows met"
+    },
+    "bufferPeak": {
+      "label": "Peak staging occupancy",
+      "sub": "{percent} of capacity ({capacity} pallets)"
+    }
+  },
+  "charts": {
+    "timeline": {
+      "legendAria": "Legend",
+      "legendSetup": "vehicle positioning",
+      "legendUnload": "unloading",
+      "legendClosed": "closed / shift change",
+      "legendBreak": "team break",
+      "dockSub": "dock",
+      "dockName": "Dock {n}",
+      "crewLabel": "Team {n}",
+      "crewSub": "unloading",
+      "rowCount": "{trucks} · {sub}",
+      "break": "break",
+      "breakTitle": "Break {from}–{to}",
+      "breakAria": "{row}: break {from}–{to}",
+      "truckAria": "{plate} {carrier}, consignment note {waybill}, arrives {arrival}, dock {dock}, team {crew}",
+      "tooltipTruck": "vehicle",
+      "tooltipWaybill": "note {waybill} · {pallets}",
+      "tooltipTimes": "arrives {arrival} · unloading {start}–{end}",
+      "tooltipDockCrew": "dock {dock} · team {crew}",
+      "tooltipLate": "{minutes} min late"
+    },
+    "buffer": {
+      "title": "Staging area occupancy (pallets)",
+      "summary": "peak {peak} of {capacity} · forklift operators move up to {perSlot} pallets every {slot} min",
+      "aria": "Staging area occupancy during the day, peaking at {peak} of {capacity} pallets",
+      "capacity": "capacity {capacity}",
+      "tooltipLevel": "in staging: {count} pallets",
+      "tooltipFlow": "unloaded {inflow} · racked {putaway}"
+    }
+  },
+  "settings": {
+    "title": "Warehouse settings",
+    "intro": "Version {version} · {timezone}. Saving creates a new version; existing schedules stay as they are.",
+    "cardTitle": "Resources and working hours",
+    "save": "Save as new version",
+    "groups": {
+      "resources": "Resources",
+      "times": "Handling times",
+      "hours": "Working hours and shifts",
+      "breaks": "Breaks",
+      "solver": "Planning",
+      "weights": "Optimization priorities"
+    },
+    "weightsIntro": "The higher the weight, the more that goal counts when a schedule is generated.",
+    "fields": {
+      "docks": {
+        "label": "Unloading docks",
+        "hint": ""
+      },
+      "crews": {
+        "label": "Unloading teams",
+        "hint": ""
+      },
+      "crewSize": {
+        "label": "People per team",
+        "hint": "for the report only"
+      },
+      "fullTruckMinutes": {
+        "label": "Full truck unloading time (min)",
+        "hint": ""
+      },
+      "fullTruckPallets": {
+        "label": "Pallets per full truck",
+        "hint": ""
+      },
+      "dockSetupMinutes": {
+        "label": "Vehicle positioning time (min)",
+        "hint": ""
+      },
+      "bufferCapacity": {
+        "label": "Staging capacity (pallets)",
+        "hint": ""
+      },
+      "putawayPalletsPerHour": {
+        "label": "Forklift handling rate (pallets/h)",
+        "hint": ""
+      },
+      "workFrom": {
+        "label": "Receiving opens",
+        "hint": ""
+      },
+      "workTo": {
+        "label": "Receiving closes",
+        "hint": ""
+      },
+      "shiftChange": {
+        "label": "Shift change at",
+        "hint": ""
+      },
+      "shiftChangeMinutes": {
+        "label": "Shift handover (min)",
+        "hint": ""
+      },
+      "breaksPerShift": {
+        "label": "Breaks per shift",
+        "hint": ""
+      },
+      "breakMinutes": {
+        "label": "Break length (min)",
+        "hint": ""
+      },
+      "lastArrival": {
+        "label": "Latest arrival",
+        "hint": ""
+      },
+      "slotMinutes": {
+        "label": "Time step (min)",
+        "hint": "5, 10, 15 or 30"
+      },
+      "solverTimeLimitS": {
+        "label": "Max. scheduling time (s)",
+        "hint": ""
+      },
+      "weightTardiness": {
+        "label": "On-time unloading",
+        "hint": ""
+      },
+      "weightMakespan": {
+        "label": "Earlier finish",
+        "hint": ""
+      },
+      "weightFlow": {
+        "label": "Earlier arrivals",
+        "hint": ""
+      },
+      "weightBuffer": {
+        "label": "Short staging time",
+        "hint": ""
+      }
+    }
+  },
+  "validation": {
+    "time": "enter a time as HH:MM",
+    "waybillRequired": "enter the consignment note number",
+    "carrierRequired": "enter the carrier",
+    "emailInvalid": "invalid e-mail address",
+    "deliveryDateRequired": "enter the delivery date",
+    "palletsPositive": "pallets must be a whole number above 0",
+    "priorityRange": "priority must be a whole number from 1 to 10",
+    "palletsOverBuffer": "{pallets} pallets is more than the staging area can hold ({capacity})",
+    "windowOrder": "The time window must close after it opens",
+    "intRange": "whole number from {min} to {max}",
+    "slot": "allowed values: 5, 10, 15 or 30 min",
+    "workOrder": "Receiving must close after it opens",
+    "lastArrivalRange": "The latest arrival must be within working hours",
+    "shiftChangeRange": "The shift change must be within working hours",
+    "paramsField": "{field}: {message}",
+    "import": {
+      "waybillMissing": "missing consignment note number",
+      "carrierMissing": "missing carrier",
+      "carrierEmailInvalid": "invalid carrier e-mail",
+      "dateFormat": "use YYYY-MM-DD or DD.MM.YYYY for the delivery date",
+      "palletsInt": "pallets must be a whole number",
+      "palletsPositive": "pallets must be above 0",
+      "priorityRange": "priority must be a whole number from 1 to 10",
+      "windowFromFormat": "window opens: “{value}” — expected HH:MM",
+      "windowToFormat": "window closes: “{value}” — expected HH:MM",
+      "windowOrder": "the time window closes before it opens",
+      "inconsistent": "note {waybill}: carrier or date differs from row {row}",
+      "overBuffer": "note {waybill}: {pallets} pallets is more than the staging area can hold ({capacity})"
+    }
+  },
+  "notifications": {
+    "deliveryAdded": "Delivery {waybill} added",
+    "paramsSaved": "Settings saved (version {version})",
+    "importNoEmail": "{waybills} without a carrier e-mail — you’ll need to send those messages yourself",
+    "importUnchanged": "{waybills} unchanged — skipped"
+  },
+  "errors": {
+    "unexpected": "Unexpected error: {message}",
+    "http": "Server error (HTTP {status})",
+    "noFile": "No file selected",
+    "fileTooLarge": "The file is larger than 10 MB",
+    "noRows": "The file contains no data",
+    "unsupportedFormat": "Supported formats: CSV and XLSX",
+    "csv": "CSV error: {message}",
+    "invalidId": "Invalid ID",
+    "invalidRequest": "Invalid request: {details}",
+    "planNotFound": "Schedule not found",
+    "planEmpty": "This schedule contains no arrivals",
+    "noActiveParams": "No active settings — run `npm run db:seed`",
+    "noActiveDocks": "No active docks — check your settings",
+    "planSolving": "This schedule is still being generated — please wait",
+    "duplicateWaybill": "A delivery with this consignment note number already exists",
+    "solverRejected": "The scheduling engine rejected the request ({status}): {body}",
+    "solverStatus": "The scheduling engine returned error {status}",
+    "solverTimeout": "The scheduling engine didn’t respond in time ({ms} ms)",
+    "solverUnreachable": "Can’t reach the scheduling engine at {url}: {error}",
+    "solverResult": "Scheduling engine: {status}",
+    "fontMissing": "Font {file} not found (dejavu-fonts-ttf package)"
+  },
+  "solverHints": {
+    "overBuffer": "{pallets} pallets won’t fit in the staging area ({capacity})",
+    "fixedOutside": "the fixed arrival time is outside working hours or before the time window opens",
+    "noSlot": "unloading can’t fit into working hours after the time window opens",
+    "breaksDontFit": "shift {shift}: {count} breaks don’t fit with the required gaps between them",
+    "infeasible": "With your current resources, not every truck can be handled within working hours. Move some deliveries to another day or add an unloading team.",
+    "timeout": "No schedule found in the time allowed — increase the max. scheduling time",
+    "noTrucks": "no trucks to schedule",
+    "duplicateIds": "duplicate truck IDs",
+    "late": "unloading finishes {minutes} min late",
+    "leftover": "{count} pallets would still be in staging after closing"
+  },
+  "reports": {
+    "title": "Delivery schedule — {date}",
+    "docTitle": "Delivery schedule {date}",
+    "summary": "{warehouse} · {trucks} · {pallets} · arrivals {from}–{to} · {docks} · {crews} · team utilization {utilization}",
+    "columns": {
+      "arrival": "Arrival",
+      "dock": "Dock",
+      "plate": "Reg. no.",
+      "carrier": "Carrier",
+      "waybill": "Consignment note",
+      "supplier": "Supplier",
+      "pallets": "Pallets",
+      "unload": "Unloading",
+      "crew": "Team"
+    },
+    "late": "after time window",
+    "footer": "Arrival time is when the vehicle should be at its dock. Generated {generated} · schedule #{id}",
+    "fileName": "delivery-schedule-{date}.pdf",
+    "defaultSignature": "ETPromo Goods-In Team"
+  },
+  "emails": {
+    "greeting": "Hello,",
+    "intro": "Please find below your unloading slots at our {warehouse} warehouse on {date}:",
+    "line": "• {time} — dock {dock} — {truck} — consignment note {waybill} ({pallets})",
+    "truckWithPlate": "vehicle {plate}",
+    "truck": "vehicle",
+    "arrive": "Please arrive at the time shown and report to the assigned dock.",
+    "delay": "If you’re running late, please let us know as early as possible so we can reschedule the following unloads.",
+    "regards": "Kind regards,",
+    "subject": "Unloading slots — {warehouse}, {date}",
+    "subjectCount": " ({trucks})",
+    "card": {
+      "noEmail": "no carrier e-mail — please send this message yourself",
+      "copy": "Copy",
+      "copied": "Copied",
+      "open": "Open in e-mail",
+      "subjectPrefix": "Subject: {subject}"
+    }
+  },
+  "tooltips": {
+    "infoAria": "Help: {topic}",
+    "metrics": {
+      "trucksPallets": "Trucks and pallets in this schedule, with the docks and teams available shown underneath.",
+      "arrivals": "When the first truck arrives and when the last one finishes unloading. The earlier the day ends, the more slack you have for late trucks.",
+      "putaway": "When the last pallet leaves the staging area for the racks.",
+      "crewUtilization": "The share of the teams’ working time spent unloading. A low figure means teams are often waiting for trucks or for space in staging.",
+      "late": "Trucks that will finish unloading after their time window closes. The total delay in minutes is shown underneath.",
+      "bufferPeak": "The most pallets in the staging area at any one time during the day. It shows how close you came to running out of space."
+    },
+    "params": {
+      "fullTruckMinutes": "How long one team takes to unload a full truck. Part loads take proportionally less time.",
+      "fullTruckPallets": "How many pallets a full truck carries. Together with the unloading time, this sets each team’s pace.",
+      "dockSetupMinutes": "The time needed to position a vehicle at the dock before unloading starts. The team can work on another truck in the meantime.",
+      "bufferCapacity": "The maximum number of pallets that can be held in the staging area at any one time.",
+      "putawayPalletsPerHour": "How many pallets your forklift operators can move from staging to the racks per hour.",
+      "shiftChangeMinutes": "How long the shift handover takes. No arrivals, unloading or putaway are planned during it.",
+      "breaksPerShift": "How many breaks each team takes per shift. The app times them so they cause as little disruption as possible.",
+      "lastArrival": "The latest time a truck can arrive. It leaves time to finish unloading and clear staging before closing.",
+      "slotMinutes": "The step used for arrival and unloading times. A smaller step gives a more precise schedule but takes longer to calculate.",
+      "solverTimeLimitS": "How long the app can spend looking for the best schedule. When time runs out, it uses the best one found so far.",
+      "weightTardiness": "How much it matters to finish unloading within each time window. A higher value makes this goal more important.",
+      "weightMakespan": "How much it matters to finish the day’s last unload earlier.",
+      "weightFlow": "How much it matters to handle each truck as early as its time window allows.",
+      "weightBuffer": "How much it matters to keep pallets in staging for as short a time as possible."
+    },
+    "fields": {
+      "windows": "The time range in which the truck should arrive and be unloaded. Leave it blank if there’s no restriction.",
+      "priority": "When not every truck can be on time, deliveries with a higher priority are protected from delays first.",
+      "hardWindow": "Unloading must finish within the time window. If that’s impossible, the window is relaxed and the schedule shows a warning."
+    },
+    "actions": {
+      "import": "A CSV or XLSX file with the columns numer_listu, przewoznik, data_dostawy and liczba_palet (any others are optional). Click “Check” first, then “Import”.",
+      "versions": "Every time you generate a schedule, it’s saved as a new version. Click a version to view it.",
+      "weekStrip": "Your week at a glance: trucks and schedule status for each day. The icon shows whether a schedule is ready, generating, out of date or failed.",
+      "runStatus": "“Optimal” means no better schedule exists. “Valid” meets every rule, but there wasn’t enough time to confirm it’s the best."
+    },
+    "columns": {
+      "arrival": "When the vehicle should be at its dock — this is the time the carrier receives.",
+      "unload": "When unloading takes place, starting once the vehicle is in position.",
+      "window": "The delivery’s time window. A red “+N min” means unloading will finish late.",
+      "deliveryWindow": "When the truck should arrive and be unloaded. Fixed windows must be met."
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Welcome to ETPromo!",
+      "body": "In a few quick steps, we’ll show you how to load deliveries, generate a schedule and share it with your carriers.",
+      "meta": "{steps, plural, one {# step} other {# short steps}} · about 2 minutes",
+      "safe": "The tour won’t change any of your data.",
+      "start": "Start the tour",
+      "later": "Maybe later",
+      "skip": "Skip the tour"
+    },
+    "tour": {
+      "progress": "Step {current} of {total}",
+      "next": "Next",
+      "prev": "Back",
+      "finish": "Done",
+      "close": "Close the tour",
+      "missing": "You’ll see this once there’s data — for example, after a schedule has been generated."
+    },
+    "status": {
+      "not_started": "not started",
+      "in_progress": "in progress",
+      "paused": "paused",
+      "completed": "completed",
+      "skipped": "skipped"
+    },
+    "steps": {
+      "welcome": {
+        "title": "Your delivery schedule in minutes",
+        "body": "ETPromo gives every truck an arrival time and a dock so unloading runs smoothly. Let’s take a quick look around."
+      },
+      "navigation": {
+        "title": "Three main sections",
+        "body": "Load your trucks under Deliveries, describe your warehouse under Settings, then generate and share schedules on the Schedule page."
+      },
+      "language": {
+        "title": "Language",
+        "body": "Switch the app’s language here. Go ahead and try it — the tour will switch too."
+      },
+      "import": {
+        "title": "Import your deliveries",
+        "body": "The quickest way to add deliveries is from a CSV or Excel file. Choose the file, click “Check”, then “Import” once there are no errors."
+      },
+      "addDelivery": {
+        "title": "Add a single delivery",
+        "body": "Use this form for a truck that isn’t in your file. The time window and priority are optional."
+      },
+      "deliveryList": {
+        "title": "Your delivery list",
+        "body": "All upcoming trucks are listed here. Click a date to open that day’s schedule, or cancel a truck that won’t be coming."
+      },
+      "resources": {
+        "title": "Describe your warehouse",
+        "body": "Enter your docks, teams, staging capacity, handling times and working hours. The ⓘ icon next to a field explains what it means."
+      },
+      "weights": {
+        "title": "What matters most",
+        "body": "Priorities tell the app what to focus on, such as meeting time windows or finishing the day earlier. The defaults work well for most warehouses."
+      },
+      "saveSettings": {
+        "title": "Save your changes",
+        "body": "New settings apply the next time you generate a schedule. Existing schedules aren’t affected."
+      },
+      "pickDay": {
+        "title": "Pick a day",
+        "body": "Click a day in the week overview, or use the arrows and date picker above. The icon next to each day shows its schedule status."
+      },
+      "generate": {
+        "title": "Generate the schedule",
+        "body": "One button schedules the selected day, the other the whole week. It usually takes just a few seconds."
+      },
+      "kpis": {
+        "title": "Your day at a glance",
+        "body": "These tiles show the key figures: arrival times, team utilization, delays and staging occupancy. Hover over ⓘ if anything’s unclear."
+      },
+      "arrivals": {
+        "title": "Arrival times",
+        "body": "This is the key table: when each truck should arrive and at which dock. A red “+N min” means that unload will finish late."
+      },
+      "timeline": {
+        "title": "How the day unfolds",
+        "body": "The timeline shows what each dock and team is doing throughout the day. The Staging area tab shows how many pallets are waiting to be racked."
+      },
+      "versions": {
+        "title": "Schedule versions",
+        "body": "Each time you generate a schedule, a new version is saved, so you can compare options. Delete the ones you don’t need."
+      },
+      "share": {
+        "title": "Share with your carriers",
+        "body": "Download a PDF or use the ready-made messages in the Messages tab. You can choose the document language separately from the app language."
+      },
+      "finish": {
+        "title": "You’re all set!",
+        "body": "You can replay this tour at any time from the Help button."
+      }
+    }
+  },
+  "help": {
+    "button": "Help",
+    "buttonAria": "Open help",
+    "center": {
+      "title": "Help",
+      "description": "Guided tour and a quick how-to.",
+      "status": "Tour: {status}",
+      "start": "Start the tour",
+      "restart": "Restart the tour",
+      "resume": "Continue the tour (step {step} of {total})",
+      "manual": "Full user guide",
+      "contextHint": "The ⓘ icon next to a field or figure explains what it means."
+    },
+    "manual": {
+      "title": "User guide",
+      "intro": "A short guide to the app, covering the same ground as the tour, so you can read it whenever you like.",
+      "quickStartTitle": "Getting started",
+      "quickStart": {
+        "s1": "Check your warehouse settings and save them.",
+        "s2": "On the Deliveries page, load your file: “Check” first, then “Import”.",
+        "s3": "On the Schedule page, pick a day and click “Generate daily schedule”.",
+        "s4": "Review the arrival times and any late unloads.",
+        "s5": "Download the PDF or send the ready-made messages to your carriers."
+      },
+      "tourTitle": "Screen by screen",
+      "general": "Finding your way around"
+    },
+    "faq": {
+      "title": "FAQ",
+      "items": {
+        "whyInfeasible": {
+          "q": "Why can’t a schedule be generated?",
+          "a": "With your current resources, not every truck fits into working hours. Move some deliveries to another day, add a team or extend working hours."
+        },
+        "optimalVsFeasible": {
+          "q": "What’s the difference between “optimal” and “valid”?",
+          "a": "Both are fine to send. An optimal schedule is the best possible; with a valid one, there wasn’t time to confirm that."
+        },
+        "stale": {
+          "q": "What does “out of date” mean?",
+          "a": "The day’s deliveries changed after the schedule was generated. Regenerate it before sending."
+        },
+        "paramsChange": {
+          "q": "Will changing settings affect existing schedules?",
+          "a": "No. New settings apply the next time you generate a schedule."
+        },
+        "editDelivery": {
+          "q": "How do I correct a delivery?",
+          "a": "Import a file with the same consignment note number, and the delivery will be updated."
+        },
+        "sendEmails": {
+          "q": "Does the app send e-mails?",
+          "a": "No. You copy the ready-made message or open it in your e-mail program."
+        }
+      }
+    }
+  }
+}

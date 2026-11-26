@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { currentLocale } from "@/i18n/server";
+import { translator } from "@/i18n/translator";
+import { localizeError } from "@/server/errors";
 import { importWaybills, TEMPLATE_HEADERS } from "@/server/deliveries/import";
 import { parseUpload } from "@/server/import/table";
 import { getActiveParams } from "@/server/scheduling/plan";
@@ -21,17 +24,19 @@ export async function GET() {
 
 /** multipart: file=<csv|xlsx>, commit=0|1 */
 export async function POST(req: Request) {
+  const locale = await currentLocale();
+  const t = translator(locale);
   const form = await req.formData();
   const file = form.get("file");
-  if (!(file instanceof File)) return NextResponse.json({ error: "Brak pliku" }, { status: 400 });
-  if (file.size > 10 * 1024 * 1024) return NextResponse.json({ error: "Plik większy niż 10 MB" }, { status: 413 });
+  if (!(file instanceof File)) return NextResponse.json({ error: t("errors.noFile") }, { status: 400 });
+  if (file.size > 10 * 1024 * 1024) return NextResponse.json({ error: t("errors.fileTooLarge") }, { status: 413 });
   try {
     const rows = await parseUpload(file);
-    if (rows.length === 0) return NextResponse.json({ error: "Plik nie zawiera wierszy danych" }, { status: 400 });
+    if (rows.length === 0) return NextResponse.json({ error: t("errors.noRows") }, { status: 400 });
     const p = await getActiveParams();
-    const summary = await importWaybills(rows, { tz: p.timezone, commit: form.get("commit") === "1", bufferCapacity: p.bufferCapacity, fileName: file.name });
+    const summary = await importWaybills(rows, { tz: p.timezone, commit: form.get("commit") === "1", bufferCapacity: p.bufferCapacity, fileName: file.name, locale });
     return NextResponse.json(summary, { status: summary.errors.length > 0 ? 422 : 200 });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 400 });
+    return NextResponse.json({ error: localizeError(err, locale) }, { status: 400 });
   }
 }
